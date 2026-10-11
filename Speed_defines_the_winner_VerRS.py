@@ -1,13 +1,12 @@
 import pandas as pd
 import numpy as np
 
-def run_tianwai_feixian(df: pd.DataFrame) -> pd.DataFrame:
+def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) -> pd.DataFrame:
     """
-    龍魂戰略總部 - 天外飛仙RS (第 7 掣) Python 量化引擎 (100% 原裝 SCTR 原始分真皇真龍版)
+    龍魂戰略總部 - 天外飛仙RS (方案二：雙核戰術版 - 包含 SCTR 4.0 原始分與 0-99.9 全場排名)
     """
     df = df.sort_index().copy()
     
-    # 徹底清洗數據
     df.ffill(inplace=True)
     df.bfill(inplace=True)
     
@@ -17,9 +16,6 @@ def run_tianwai_feixian(df: pd.DataFrame) -> pd.DataFrame:
     L = df['Low']
     V = df['Volume']
 
-    # ==========================================
-    # 基礎通達信函數 Python 向量化
-    # ==========================================
     def MA(s, n): return s.rolling(window=n, min_periods=1).mean() 
     def EMA(s, n): return s.ewm(span=n, adjust=False).mean()
     def SMA(s, n, m=1): return s.ewm(alpha=m/n, adjust=False).mean()
@@ -53,7 +49,7 @@ def run_tianwai_feixian(df: pd.DataFrame) -> pd.DataFrame:
     MA10, MA20 = MA(C, 10), MA(C, 20)
     MA50, MA150, MA200 = MA(C, 50), MA(C, 150), MA(C, 200)
 
-    # RSI (供原裝 SCTR 短線使用)
+    # RSI
     LC = C.shift(1).bfill()
     DIFF_C = C - LC
     UP_RSI = np.where(DIFF_C > 0, DIFF_C, 0)
@@ -61,25 +57,30 @@ def run_tianwai_feixian(df: pd.DataFrame) -> pd.DataFrame:
     RSI_VAL = SMA(pd.Series(UP_RSI, index=df.index), 14) / (SMA(pd.Series(ABS_RSI, index=df.index), 14) + 1e-5) * 100
 
     # ==========================================
-    # 🔥 100% 原裝正版 StockCharts SCTR 算式 (Raw Score 原始分)
+    # 🔮 計算真實的 SCTR 4.0 (絕對原始分，可達200+，專供紫色顯示)
     # ==========================================
-    # 長線 (60%): 200日均線偏離度 (30%) + 125日 ROC (30%)
-    LT_EMA = (C - EMA(C, 200)) / EMA(C, 200) * 100
-    LT_ROC = (C / C.shift(125).bfill() - 1) * 100
+    L_EMA200 = EMA(C, 200)
+    L_EMA_D = (C - L_EMA200) / L_EMA200 * 100
+    L_EMA_S = L_EMA_D * 1.5
+    L_ROC_S = (C / C.shift(125).bfill() - 1) * 20
 
-    # 中線 (30%): 50日均線偏離度 (15%) + 20日 ROC (15%)
-    MT_EMA = (C - EMA(C, 50)) / EMA(C, 50) * 100
-    MT_ROC = (C / C.shift(20).bfill() - 1) * 100
+    M_EMA50 = EMA(C, 50)
+    M_EMA_S = (C - M_EMA50) / M_EMA50 * 30
+    M_ROC_S = (C / C.shift(20).bfill() - 1) * 30
 
-    # 短線 (10%): PPO 柱體 3日斜率 (5%) + 14日 RSI (5%)
-    PPO_Line = (EMA(C, 12) - EMA(C, 26)) / EMA(C, 26) * 100
-    PPO_Sig = EMA(PPO_Line, 9)
-    PPO_Hist = PPO_Line - PPO_Sig
-    PPO_Slope = (PPO_Hist - PPO_Hist.shift(3).bfill()) / 3
-    
-    # 組合原裝原始總分 (Raw Score)
-    SCTR_SCORE = (LT_EMA * 0.30) + (LT_ROC * 0.30) + (MT_EMA * 0.15) + (MT_ROC * 0.15) + (PPO_Slope * 0.05) + (RSI_VAL * 0.05)
-    SCTR_RISING = SCTR_SCORE >= SCTR_SCORE.shift(1).fillna(0)
+    PPO_F = EMA(C, 12)
+    PPO_S = EMA(C, 26)
+    PPO_V = (PPO_F - PPO_S) / PPO_S * 100
+    S_PPO_S = (PPO_V - PPO_V.shift(3).bfill()) * 5
+
+    S_RSI_S = (RSI_VAL - 50) * 0.5
+
+    S_TOTAL_4_0 = (L_EMA_S + L_ROC_S + M_EMA_S + M_ROC_S + S_PPO_S + S_RSI_S)
+    SCTR_RAW_4_0 = (S_TOTAL_4_0 / 10) + 50
+
+    # 排名分處理 (如果無後台檔案，保底俾佢0分，免除報錯)
+    FINAL_SCTR_RANK = pd.Series(sctr_rank_from_master, index=df.index)
+    SCTR_RISING = SCTR_RAW_4_0 >= SCTR_RAW_4_0.shift(1).fillna(0)
 
     # ==========================================
     # 核心條件運算 (Minervini 絕對趨勢屠龍刀)
@@ -108,23 +109,22 @@ def run_tianwai_feixian(df: pd.DataFrame) -> pd.DataFrame:
     IS_TTM_TRUE_ORANGE = (TTM_MOMENTUM > 0) & TTM_STAGE2_ON
 
     # ==========================================
-    # 🚨 雙軌掃股演算法 (標準飛仙 vs SCTR $\ge$ 35 特權)
+    # 🚨 雙軌掃股演算法 (標準飛仙 vs 全宇宙 SCTR 排名特權)
     # ==========================================
     IS_CORE_MATCH = STAGE2 & IS_MACD_ORANGE & IS_TTM_TRUE_ORANGE
 
     group_keys = (~IS_CORE_MATCH).cumsum()
     streak_series = IS_CORE_MATCH.groupby(group_keys).cumsum()
 
-    # 軌道 A：符合原本天外飛仙起爆條件
     IS_HOT_WINDOW = (streak_series >= 1) & (streak_series <= 3)
     IS_COOL_WINDOW = (streak_series >= 4) & (streak_series <= 10)
     
-    # 🔥 軌道 B：未符合天外飛仙，但 SCTR 原始分 >= 35 且正在上升 (特權強制掃出)
-    IS_SCTR_PRIVILEGE = (SCTR_SCORE >= 35) & SCTR_RISING & (~IS_HOT_WINDOW)
+    # 🔥 軌道 B：未符合天外飛仙，但 全場排名 >= 85分 且原始動能上升中 (特權強制掃出)
+    IS_SCTR_PRIVILEGE = (FINAL_SCTR_RANK >= 85) & SCTR_RISING & (~IS_HOT_WINDOW)
     
-    # 🐉 終極真龍與真皇分級
-    IS_TRUE_EMPEROR = (SCTR_SCORE >= 35) & (SCTR_SCORE < 40)
-    IS_TRUE_DRAGON = (SCTR_SCORE >= 40)
+    # 🐉 真皇 (85-90%) 與 真龍 (90%以上)
+    IS_TRUE_EMPEROR = (FINAL_SCTR_RANK >= 85) & (FINAL_SCTR_RANK < 90)
+    IS_TRUE_DRAGON = (FINAL_SCTR_RANK >= 90)
 
     STATE_SERIES = pd.Series(np.where(IS_HOT_WINDOW, 1, np.where(IS_COOL_WINDOW, 2, np.where(IS_SCTR_PRIVILEGE, 3, 0))), index=df.index)
 
@@ -358,18 +358,19 @@ def run_tianwai_feixian(df: pd.DataFrame) -> pd.DataFrame:
         tags_str = "（未符合飛仙） | " + tags_str if tags_str else "（未符合飛仙）"
 
     # ==========================================
-    # 輸出結算 (新戰術總分 = 基礎 + 標籤 + SCTR 原裝原始分)
+    # 輸出結算 (戰術總分 = 基礎 + 標籤 + 0-99全場排名分)
     # ==========================================
     df['天外飛仙_狀態'] = STATE_SERIES
     BASE_SCORE = np.where(IS_HOT_WINDOW, 100, np.where(IS_SCTR_PRIVILEGE, 0, np.where(IS_COOL_WINDOW, 0, -9999)))
     
-    # 新戰術總分算式
-    TOTAL_SCORE = BASE_SCORE + (len(tags) * 10) + SCTR_SCORE
+    # 新戰術總分算式：用 FINAL_SCTR_RANK (0-99.9) 排隊，避免被 200幾分擾亂
+    TOTAL_SCORE = BASE_SCORE + (len(tags) * 10) + FINAL_SCTR_RANK
     df['霸王總分'] = pd.Series(TOTAL_SCORE, index=df.index).fillna(-9999).astype(float)
     
-    # 紀錄 SCTR 分數與真龍/真皇等級標記 (0=無, 1=真皇, 2=真龍)
+    # 紀錄 分數與真龍/真皇等級標記 (0=無, 1=真皇, 2=真龍)
     dragon_level = np.where(IS_TRUE_DRAGON, 2, np.where(IS_TRUE_EMPEROR, 1, 0))
-    df['SCTR_Score'] = SCTR_SCORE.fillna(0).round(1)
+    df['SCTR_Rank'] = FINAL_SCTR_RANK.fillna(0).round(1)
+    df['SCTR_Raw_4_0'] = SCTR_RAW_4_0.fillna(0).round(1) # 紫色顯示專用
     df['Dragon_Level'] = pd.Series(dragon_level, index=df.index).fillna(0).astype(int)
     
     df['起爆日數'] = streak_series.fillna(0).astype(int)
