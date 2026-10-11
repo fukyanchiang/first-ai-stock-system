@@ -24,6 +24,18 @@ def fetch_github_list(url):
         return df
     except: return pd.DataFrame()
 
+# 讀取後台計好的全宇宙 SCTR 排名大字典
+@st.cache_data(ttl=1800)
+def load_sctr_master_dict():
+    if os.path.exists("SCTR_Master.csv"):
+        try:
+            m_df = pd.read_csv("SCTR_Master.csv")
+            return dict(zip(m_df['Ticker'].astype(str), m_df['SCTR_Rank']))
+        except: pass
+    return {}
+
+sctr_master_dict = load_sctr_master_dict()
+
 # ===============================================
 # 🪙 HardPenny 專屬核心運算函數
 # ===============================================
@@ -172,7 +184,7 @@ with st.sidebar:
         ]
     )
     st.markdown("---")
-    st.caption("👴 爺爺的操盤矩陣 V188.12 (真皇/真龍 SCTR 雙重覺醒版)")
+    st.caption("👴 爺爺的操盤矩陣 V188.13 (方案二：全場排名 + 紫色動能版)")
 
 if operation_mode == "🐉 龍魂神殿雷達系統":
     MEMORY_FILE = "dragon_memory.json"
@@ -268,7 +280,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
             is_rs = (st.session_state.scan_mode == 'TIANWAI_RS')
             
             if is_hp: title_text = "🪙 爛市尋強者 - 9大 SEPA 嚴格篩選"; btn_text = "🪙 啟動爛市雷達"; us_target = 'US_HP'; hk_target = 'HK_HP'
-            elif is_rs: title_text = "⚡ 天外飛仙RS (SCTR 原始分真皇真龍版)"; btn_text = "⚡ 啟動飛仙RS雷達"; us_target = 'US_TW_RS'; hk_target = 'HK_TW_RS'
+            elif is_rs: title_text = "⚡ 天外飛仙RS (方案二：全宇宙排名雙核版)"; btn_text = "⚡ 啟動飛仙RS雷達"; us_target = 'US_TW_RS'; hk_target = 'HK_TW_RS'
             else: title_text = "✨ 天外飛仙 (第 6 掣) 極速起爆雷達"; btn_text = "✨ 啟動飛仙雷達"; us_target = 'US_TW'; hk_target = 'HK_TW'
 
             st.markdown(f"<h1 style='text-align:center; color:#00FFCC;'>{title_text}</h1>", unsafe_allow_html=True)
@@ -473,7 +485,12 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                         
                         if st.session_state.run_mode in ['TIANWAI', 'TIANWAI_RS']:
                             is_rs_mode = (st.session_state.run_mode == 'TIANWAI_RS')
-                            if is_rs_mode: res_df = run_tianwai_feixian_rs(df)
+                            
+                            # 讀取後台計好嘅 SCTR 排名字典 (方案二)
+                            clean_t = t.replace(".HK", "")
+                            t_rank = sctr_master_dict.get(t, sctr_master_dict.get(clean_t, 0.0))
+                            
+                            if is_rs_mode: res_df = run_tianwai_feixian_rs(df, sctr_rank_from_master=t_rank)
                             else: res_df = run_tianwai_feixian(df)
                             
                             latest = res_df.iloc[-1]
@@ -483,7 +500,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                                 
                                 if latest['天外飛仙_狀態'] == 1: status_txt = f"[🚀 起爆(1-3日)] ({day_num})"
                                 elif latest['天外飛仙_狀態'] == 2: status_txt = f"[🐢 沉底(4-10日)] ({day_num})"
-                                else: status_txt = "[🔥 SCTR狂暴突破]"
+                                else: status_txt = "[🔥 SCTR真皇/真龍覺醒]"
                                 
                                 results.append({
                                     'Ticker': t.replace(".HK", ""),
@@ -501,7 +518,8 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                                     'OBV': '狀態 1' if latest['天外飛仙_狀態'] == 1 else '狀態 2',
                                     'Icons': latest.get('天外飛仙_標籤', ''),
                                     'IsDead': False,
-                                    'SCTR_Score': latest.get('SCTR_Score', 0) if is_rs_mode else None,
+                                    'SCTR_Rank': latest.get('SCTR_Rank', 0) if is_rs_mode else None,
+                                    'SCTR_Raw_4_0': latest.get('SCTR_Raw_4_0', 0) if is_rs_mode else None,
                                     'Dragon_Level': latest.get('Dragon_Level', 0) if is_rs_mode else 0
                                 })
                         elif st.session_state.run_mode == 'HARDPENNY':
@@ -555,7 +573,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                         for err in debug_errors: st.write(f"- {err}")
 
         # ===============================================
-        # 顯示卡片結果區 (完美解決 Markdown 縮排 Bug 版)
+        # 顯示卡片結果區 (加入 SCTR 4.0 紫色專屬字體)
         # ===============================================
         if st.session_state.get('dragon_results'):
             if st.session_state.get('sl_list'):
@@ -585,9 +603,10 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                     st.markdown(card_html, unsafe_allow_html=True)
                 
                 elif st.session_state.scan_mode == 'TIANWAI_RS':
-                    sctr = r.get('SCTR_Score', 0)
+                    sctr_rank = r.get('SCTR_Rank', 0)
+                    sctr_raw_purple = r.get('SCTR_Raw_4_0', 0)
                     dragon_lvl = r.get('Dragon_Level', 0)
-                    sctr_color = "#FFD700" if sctr >= 35 else "#00FFCC"
+                    sctr_color = "#FFD700" if sctr_rank >= 85 else "#00FFCC"
                     
                     dragon_html = ""
                     if dragon_lvl == 2:
@@ -603,7 +622,9 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                         f"<div class='dragon-card' style='border-left: 5px solid {border_color};'>"
                         f"<div style='font-size:1.3rem;font-weight:bold;color:#FFFFFF; display:flex; align-items:center; flex-wrap:wrap;'>"
                         f"<span>{r['Status']} {r['Ticker']}</span> <span style='color:#00FFCC; margin-left:5px; margin-right:15px;'>({r['Sector']})</span>"
-                        f"<span style='color:{sctr_color}; font-size:1.5rem; font-weight:bold;'>SCTR: {sctr}</span>{dragon_html}</div>"
+                        f"<span style='color:{sctr_color}; font-size:1.5rem; font-weight:bold;'>SCTR排名: {sctr_rank}</span>"
+                        f"<span style='color:#BC13FE; font-size:1.2rem; font-weight:bold; margin-left:15px;'>[🔮 絕對動能4.0: {sctr_raw_purple}]</span>"
+                        f"{dragon_html}</div>"
                         f"<div style='font-size:1.1rem; font-weight:bold; color:#FFD700; margin-top:5px;'>{display_icons}</div>"
                         f"<div class='data-row'><b>戰術總分: {r['Score']}分</b> | <b style='color:#FF9900;'>原始戰力: {r.get('RawPower', 0)} 🔥</b> | <span style='color:#FF4B4B; font-weight:bold;'>🛑 止損(10-EMA): ${r['EMA10']}</span> | Bias: {r['Bias']}%<br>"
                         f"📈 RS: {r['RS']} | 🔋 EJ: {r['EJ']} | ⚡ SE: {r['SE']} | 🔥 買盤力: {r['Power']}x | 📊 OBV: {r.get('OBV', 'N/A')}</div></div>"
@@ -763,7 +784,7 @@ elif operation_mode == "📊 究極資產拔河龍虎榜":
                         fig = px.bar(df_result, x='Current_Return', y='Display_Label', orientation='h', color='Current_Return', color_continuous_scale='YlOrRd', text=df_result.apply(lambda row: f"{row['Current_Return']:.1f}%" if row['Ticker'] != '...' else "", axis=1))
                         
                         is_hk_target_str = "港股" in target_category
-                        title_text = f"📊 {target_category} - {lookback_days}日 相的回報龍虎榜 (含大滿貫情報密碼)" if not run_hunt else f"🦅 「爆升獵龍」極速特搜榜 - {target_category} (港股≥30位/美股≥50位 + 🔋爆量)"
+                        title_text = f"📊 {target_category} - {lookback_days}日 相對回報龍虎榜 (含大滿貫情報密碼)" if not run_hunt else f"🦅 「爆升獵龍」極速特搜榜 - {target_category} (港股≥30位/美股≥50位 + 🔋爆量)"
                         
                         fig.update_layout(title=title_text, title_font=dict(size=18, color="white"), plot_bgcolor='#0e1117', paper_bgcolor='#0e1117', font=dict(color="white"), yaxis=dict(showgrid=False, title="", tickfont=dict(size=11, color="white", family="Courier New"), fixedrange=True), xaxis=dict(showgrid=False, zeroline=True, zerolinecolor='#444', title="相對平均之超額回報 (Alpha %)", fixedrange=True), height=max(600, len(df_result) * 115), coloraxis_showscale=False, margin=dict(l=160, r=80, t=60, b=20), hovermode=False)
                         fig.update_traces(textposition='outside', textfont=dict(color='white', size=12), cliponaxis=False)
