@@ -1,15 +1,14 @@
-import streamlit as st 
-import yfinance as yf 
-import pandas as pd 
-import numpy as np 
-import plotly.graph_objects as go 
-from plotly.subplots import make_subplots 
+import streamlit as st
+import yfinance as yf
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from core_logic import scan_dragon_logic, smart_fetch, check_stop_loss
 import time
 import os
 import json
 from Speed_defines_the_winner import run_tianwai_feixian
-# 🌟 導入全新的天外飛仙 RS (SCTR 真龍版) 引擎
 from Speed_defines_the_winner_VerRS import run_tianwai_feixian as run_tianwai_feixian_rs
 
 st.set_page_config(page_title="龍魂神殿 5.0", layout="wide")
@@ -17,7 +16,7 @@ st.set_page_config(page_title="龍魂神殿 5.0", layout="wide")
 HK_STOCK_CSV_URL = "https://raw.githubusercontent.com/fukyanchiang/my-cosmos-vision/refs/heads/main/hk_stock.csv"
 HK_ETF_CSV_URL = "https://raw.githubusercontent.com/fukyanchiang/my-cosmos-vision/refs/heads/main/hk_etf.csv"
 
-@st.cache_data(ttl=3600) 
+@st.cache_data(ttl=3600)
 def fetch_github_list(url):
     try:
         df = pd.read_csv(url)
@@ -233,7 +232,6 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
     # ===============================================
     if st.session_state.page == 'HOME':
         st.markdown("<h1 style='text-align:center;font-size:4rem;margin-top:80px;color:#FFD700;'>🐲 龍魂戰略總部</h1>", unsafe_allow_html=True)
-        # 🌟 修改點 1: 升級為 7 個 columns
         c1, c2, c3, c4, c5, c6, c7 = st.columns(7)
         if c1.button("🐉 龍魂神殿 (普通掃描)"): 
             st.session_state.page = 'DRAGON'; st.session_state.scan_mode = 'NORMAL'
@@ -253,7 +251,6 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
         if c6.button("🪙 HardPenny"): 
             st.session_state.page = 'DRAGON'; st.session_state.scan_mode = 'HARDPENNY'; st.session_state.target = 'US_HP'
             st.session_state.dragon_results = []; st.session_state.sl_list = []; st.rerun()
-        # 🌟 修改點 2: 新增第 7 個掣
         if c7.button("⚡ 天外飛仙RS"): 
             st.session_state.page = 'DRAGON'; st.session_state.scan_mode = 'TIANWAI_RS'; st.session_state.target = 'US_TW_RS'
             st.session_state.dragon_results = []; st.session_state.sl_list = []; st.rerun()
@@ -474,23 +471,19 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                             if not is_single_mode: continue
                         if check_stop_loss(df): sl_list.append(t)
                         
-                        # 🌟 修改點 3: 加入 TIANWAI_RS 的獨立呼叫邏輯
                         if st.session_state.run_mode in ['TIANWAI', 'TIANWAI_RS']:
                             is_rs_mode = (st.session_state.run_mode == 'TIANWAI_RS')
-                            # 呼叫對應的引擎
                             if is_rs_mode: res_df = run_tianwai_feixian_rs(df)
                             else: res_df = run_tianwai_feixian(df)
                             
                             latest = res_df.iloc[-1]
                             
-                            # 狀態判定大於 0 才擷取
                             if latest['天外飛仙_狀態'] > 0:
                                 day_num = int(latest.get('起爆日數', 0))
                                 
-                                # 組合標題
                                 if latest['天外飛仙_狀態'] == 1: status_txt = f"[🚀 起爆(1-3日)] ({day_num})"
                                 elif latest['天外飛仙_狀態'] == 2: status_txt = f"[🐢 沉底(4-10日)] ({day_num})"
-                                else: status_txt = "[🔥 SCTR狂暴突破]" # 狀態3專屬
+                                else: status_txt = "[🔥 SCTR狂暴突破]"
                                 
                                 results.append({
                                     'Ticker': t.replace(".HK", ""),
@@ -508,7 +501,6 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                                     'OBV': '狀態 1' if latest['天外飛仙_狀態'] == 1 else '狀態 2',
                                     'Icons': latest.get('天外飛仙_標籤', ''),
                                     'IsDead': False,
-                                    # RS 版專屬數據帶落去
                                     'SCTR_Score': latest.get('SCTR_Score', 0) if is_rs_mode else None,
                                     'Is_True_Dragon': latest.get('真龍_標記', False) if is_rs_mode else False
                                 })
@@ -598,18 +590,15 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                     </div>
                     """, unsafe_allow_html=True)
                 
-                # 🌟 修改點 4: TIANWAI_RS 專屬渲染 (SCTR 雙色 + 真龍字體)
                 elif st.session_state.scan_mode == 'TIANWAI_RS':
                     sctr = r.get('SCTR_Score', 0)
                     is_dragon = r.get('Is_True_Dragon', False)
-                    sctr_color = "#FFD700" if sctr >= 90 else "#00FFCC" # 橙金色 / 藍綠色
+                    sctr_color = "#FFD700" if sctr >= 90 else "#00FFCC"
                     
-                    # 處理真龍字體
                     dragon_html = ""
                     if is_dragon:
                         dragon_html = "<span style='color: #FFD700; font-size: 1.6rem; font-weight: 900; margin-left:10px; text-shadow: 0 0 10px #FFD700;'>👑真龍</span>"
                     
-                    # 替換圖標中的真龍文字避免重複顯示
                     display_icons = r['Icons'].replace("👑真龍 | ", "").replace("👑真龍", "")
                     
                     st.markdown(f"""
@@ -646,7 +635,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                     """, unsafe_allow_html=True)
 
         # ===============================================
-        # 全黑戰術圖表繪製 (保留原版無變更)
+        # 全黑戰術圖表繪製
         # ===============================================
         chart_t = None
         if st.session_state.get('dragon_results'):
