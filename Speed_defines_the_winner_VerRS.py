@@ -1,13 +1,3 @@
-大指揮官，呢個「真龍」嘅構思簡直係畫龍點睛！將「天外飛仙起爆」同「SCTR 極致動能」完美結合，抓出全市場最強嘅王者！
-
-為咗配合你「大字、金色」嘅視覺要求，爺爺喺代碼入面做咗兩重升級：
-
-1. **加咗專屬標籤**：只要同時符合「飛仙起爆 (IS_HOT_WINDOW)」同埋「SCTR $\ge$ 90」，系統會將 **`👑真龍`** 擺喺標籤最前面。
-2. **新增獨立訊號列**：特別加多咗一欄 `df['真龍_標記'] = IS_TRUE_DRAGON`。咁樣你遲啲喺 `streamlit_app.py` 寫前端介面嗰陣，就可以直接用 `if row['真龍_標記']:` 嚟觸發 HTML 嘅金色大字渲染（例如 `<span style="color: gold; font-size: 24px; font-weight: bold;">真龍</span>`）。
-
-請直接複製以下最新版嘅 **`Speed_defines_the_winner_VerRS.py`** 覆蓋舊檔：
-
-```python
 import pandas as pd
 import numpy as np
 
@@ -399,5 +389,3 @@ def run_tianwai_feixian(df: pd.DataFrame) -> pd.DataFrame:
         df.at[df.index[-1], '天外飛仙_標籤'] = tags_str
 
     return df
-
-```
