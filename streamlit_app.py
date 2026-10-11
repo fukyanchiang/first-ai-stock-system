@@ -185,7 +185,7 @@ with st.sidebar:
         ]
     )
     st.markdown("---")
-    st.caption("👴 爺爺的操盤矩陣 V188.14 (全宇宙字典即時讀取版)")
+    st.caption("👴 爺爺的操盤矩陣 V188.15 (鮮橙動能視覺優化版)")
 
 if operation_mode == "🐉 龍魂神殿雷達系統":
     MEMORY_FILE = "dragon_memory.json"
@@ -577,7 +577,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                         for err in debug_errors: st.write(f"- {err}")
 
         # ===============================================
-        # 顯示卡片結果區 (加入 SCTR 4.0 紫色專屬字體)
+        # 顯示卡片結果區 (已升級：絕對動能 4.0 換成高對比鮮橙色)
         # ===============================================
         if st.session_state.get('dragon_results'):
             if st.session_state.get('sl_list'):
@@ -627,7 +627,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                         f"<div style='font-size:1.3rem;font-weight:bold;color:#FFFFFF; display:flex; align-items:center; flex-wrap:wrap;'>"
                         f"<span>{r['Status']} {r['Ticker']}</span> <span style='color:#00FFCC; margin-left:5px; margin-right:15px;'>({r['Sector']})</span>"
                         f"<span style='color:{sctr_color}; font-size:1.5rem; font-weight:bold;'>SCTR排名: {sctr_rank}</span>"
-                        f"<span style='color:#BC13FE; font-size:1.2rem; font-weight:bold; margin-left:15px;'>[🔮 絕對動能4.0: {sctr_raw_purple}]</span>"
+                        f"<span style='color:#FF9900; font-size:1.2rem; font-weight:bold; margin-left:15px;'>[🔮 絕對動能4.0: {sctr_raw_purple}]</span>"
                         f"{dragon_html}</div>"
                         f"<div style='font-size:1.1rem; font-weight:bold; color:#FFD700; margin-top:5px;'>{display_icons}</div>"
                         f"<div class='data-row'><b>戰術總分: {r['Score']}分</b> | <b style='color:#FF9900;'>原始戰力: {r.get('RawPower', 0)} 🔥</b> | <span style='color:#FF4B4B; font-weight:bold;'>🛑 止損(10-EMA): ${r['EMA10']}</span> | Bias: {r['Bias']}%<br>"
