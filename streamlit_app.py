@@ -172,7 +172,7 @@ with st.sidebar:
         ]
     )
     st.markdown("---")
-    st.caption("👴 爺爺的操盤矩陣 V188.11 (真龍雙軌升級版)")
+    st.caption("👴 爺爺的操盤矩陣 V188.12 (真皇/真龍 SCTR 雙重覺醒版)")
 
 if operation_mode == "🐉 龍魂神殿雷達系統":
     MEMORY_FILE = "dragon_memory.json"
@@ -268,7 +268,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
             is_rs = (st.session_state.scan_mode == 'TIANWAI_RS')
             
             if is_hp: title_text = "🪙 爛市尋強者 - 9大 SEPA 嚴格篩選"; btn_text = "🪙 啟動爛市雷達"; us_target = 'US_HP'; hk_target = 'HK_HP'
-            elif is_rs: title_text = "⚡ 天外飛仙RS (SCTR 原裝公式版)"; btn_text = "⚡ 啟動飛仙RS雷達"; us_target = 'US_TW_RS'; hk_target = 'HK_TW_RS'
+            elif is_rs: title_text = "⚡ 天外飛仙RS (SCTR 原始分真皇真龍版)"; btn_text = "⚡ 啟動飛仙RS雷達"; us_target = 'US_TW_RS'; hk_target = 'HK_TW_RS'
             else: title_text = "✨ 天外飛仙 (第 6 掣) 極速起爆雷達"; btn_text = "✨ 啟動飛仙雷達"; us_target = 'US_TW'; hk_target = 'HK_TW'
 
             st.markdown(f"<h1 style='text-align:center; color:#00FFCC;'>{title_text}</h1>", unsafe_allow_html=True)
@@ -344,7 +344,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
             st.markdown("---")
             c_ath, c_btn = st.columns([3, 1])
             with c_ath: 
-                is_ath_mode = st.checkbox("🔥 啟爬 ATH 歷史新高極致過濾")
+                is_ath_mode = st.checkbox("🔥 啟動 ATH 歷史新高極致過濾")
                 vcp_52w = st.checkbox("🎯 啟動 MM 原汁原味 52週高位 25% 內過濾")
 
             if st.session_state.target == 'US':
@@ -502,7 +502,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                                     'Icons': latest.get('天外飛仙_標籤', ''),
                                     'IsDead': False,
                                     'SCTR_Score': latest.get('SCTR_Score', 0) if is_rs_mode else None,
-                                    'Is_True_Dragon': latest.get('真龍_標記', False) if is_rs_mode else False
+                                    'Dragon_Level': latest.get('Dragon_Level', 0) if is_rs_mode else 0
                                 })
                         elif st.session_state.run_mode == 'HARDPENNY':
                             res = run_hardpenny_logic(df, t, sec)
@@ -586,12 +586,18 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                 
                 elif st.session_state.scan_mode == 'TIANWAI_RS':
                     sctr = r.get('SCTR_Score', 0)
-                    is_dragon = r.get('Is_True_Dragon', False)
-                    # 🌟 將金色門檻改為 30 分 (配合原裝 SCTR 原始分機制)
-                    sctr_color = "#FFD700" if sctr >= 30 else "#00FFCC"
+                    dragon_lvl = r.get('Dragon_Level', 0)
+                    sctr_color = "#FFD700" if sctr >= 35 else "#00FFCC"
                     
-                    dragon_html = f"<span style='color: #FFD700; font-size: 1.6rem; font-weight: 900; margin-left:10px; text-shadow: 0 0 10px #FFD700;'>👑真龍</span>" if is_dragon else ""
-                    display_icons = r['Icons'].replace("👑真龍 | ", "").replace("👑真龍", "")
+                    dragon_html = ""
+                    if dragon_lvl == 2:
+                        dragon_html = "<span style='color: #FFD700; font-size: 1.6rem; font-weight: 900; margin-left:10px; text-shadow: 0 0 10px #FFD700;'>👑👑真龍</span>"
+                        display_icons = r['Icons'].replace("👑👑真龍 | ", "").replace("👑👑真龍", "")
+                    elif dragon_lvl == 1:
+                        dragon_html = "<span style='color: #FFD700; font-size: 1.6rem; font-weight: 900; margin-left:10px; text-shadow: 0 0 10px #FFD700;'>👑真皇</span>"
+                        display_icons = r['Icons'].replace("👑真皇 | ", "").replace("👑真皇", "")
+                    else:
+                        display_icons = r['Icons']
                     
                     card_html = (
                         f"<div class='dragon-card' style='border-left: 5px solid {border_color};'>"
@@ -757,7 +763,7 @@ elif operation_mode == "📊 究極資產拔河龍虎榜":
                         fig = px.bar(df_result, x='Current_Return', y='Display_Label', orientation='h', color='Current_Return', color_continuous_scale='YlOrRd', text=df_result.apply(lambda row: f"{row['Current_Return']:.1f}%" if row['Ticker'] != '...' else "", axis=1))
                         
                         is_hk_target_str = "港股" in target_category
-                        title_text = f"📊 {target_category} - {lookback_days}日 相對回報龍虎榜 (含大滿貫情報密碼)" if not run_hunt else f"🦅 「爆升獵龍」極速特搜榜 - {target_category} (港股≥30位/美股≥50位 + 🔋爆量)"
+                        title_text = f"📊 {target_category} - {lookback_days}日 相的回報龍虎榜 (含大滿貫情報密碼)" if not run_hunt else f"🦅 「爆升獵龍」極速特搜榜 - {target_category} (港股≥30位/美股≥50位 + 🔋爆量)"
                         
                         fig.update_layout(title=title_text, title_font=dict(size=18, color="white"), plot_bgcolor='#0e1117', paper_bgcolor='#0e1117', font=dict(color="white"), yaxis=dict(showgrid=False, title="", tickfont=dict(size=11, color="white", family="Courier New"), fixedrange=True), xaxis=dict(showgrid=False, zeroline=True, zerolinecolor='#444', title="相對平均之超額回報 (Alpha %)", fixedrange=True), height=max(600, len(df_result) * 115), coloraxis_showscale=False, margin=dict(l=160, r=80, t=60, b=20), hovermode=False)
                         fig.update_traces(textposition='outside', textfont=dict(color='white', size=12), cliponaxis=False)
