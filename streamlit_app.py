@@ -268,7 +268,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
             is_rs = (st.session_state.scan_mode == 'TIANWAI_RS')
             
             if is_hp: title_text = "🪙 爛市尋強者 - 9大 SEPA 嚴格篩選"; btn_text = "🪙 啟動爛市雷達"; us_target = 'US_HP'; hk_target = 'HK_HP'
-            elif is_rs: title_text = "⚡ 天外飛仙RS (SCTR 真龍加強版)"; btn_text = "⚡ 啟動飛仙RS雷達"; us_target = 'US_TW_RS'; hk_target = 'HK_TW_RS'
+            elif is_rs: title_text = "⚡ 天外飛仙RS (SCTR 原裝公式版)"; btn_text = "⚡ 啟動飛仙RS雷達"; us_target = 'US_TW_RS'; hk_target = 'HK_TW_RS'
             else: title_text = "✨ 天外飛仙 (第 6 掣) 極速起爆雷達"; btn_text = "✨ 啟動飛仙雷達"; us_target = 'US_TW'; hk_target = 'HK_TW'
 
             st.markdown(f"<h1 style='text-align:center; color:#00FFCC;'>{title_text}</h1>", unsafe_allow_html=True)
@@ -344,7 +344,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
             st.markdown("---")
             c_ath, c_btn = st.columns([3, 1])
             with c_ath: 
-                is_ath_mode = st.checkbox("🔥 啟動 ATH 歷史新高極致過濾")
+                is_ath_mode = st.checkbox("🔥 啟爬 ATH 歷史新高極致過濾")
                 vcp_52w = st.checkbox("🎯 啟動 MM 原汁原味 52週高位 25% 內過濾")
 
             if st.session_state.target == 'US':
@@ -587,7 +587,8 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                 elif st.session_state.scan_mode == 'TIANWAI_RS':
                     sctr = r.get('SCTR_Score', 0)
                     is_dragon = r.get('Is_True_Dragon', False)
-                    sctr_color = "#FFD700" if sctr >= 90 else "#00FFCC"
+                    # 🌟 將金色門檻改為 30 分 (配合原裝 SCTR 原始分機制)
+                    sctr_color = "#FFD700" if sctr >= 30 else "#00FFCC"
                     
                     dragon_html = f"<span style='color: #FFD700; font-size: 1.6rem; font-weight: 900; margin-left:10px; text-shadow: 0 0 10px #FFD700;'>👑真龍</span>" if is_dragon else ""
                     display_icons = r['Icons'].replace("👑真龍 | ", "").replace("👑真龍", "")
