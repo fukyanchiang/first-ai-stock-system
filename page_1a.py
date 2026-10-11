@@ -6,7 +6,7 @@ import streamlit as st
 from datetime import datetime
 
 # ==========================================
-# 🛸 1. 內置天外飛仙 RS 核心演算法 (免 Import，防爆 100%)
+# 🛸 1. 內置天外飛仙 RS 核心演算法 (免 Import)
 # ==========================================
 def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) -> pd.DataFrame:
     df = df.sort_index().copy()
@@ -406,75 +406,34 @@ def fetch_historical_data(tickers):
         return {}
 
 # ==========================================
-# 🖥️ 3. Streamlit 主 UI 渲染
+# 🎯 單一獨立市場渲染組件 (獨立 Search 按鈕)
 # ==========================================
-def render_page_1a():
-    st.title("🛸 艙房 1a：天外飛仙 (RS 強勢爆發掃描器)")
-    st.caption("結合全宇宙 SCTR 百分位排名 (4 大全量資產庫) + Minervini 雙軌屠龍刀演算法")
+def render_single_market_search(cat_code, cat_name, df_master):
+    df_cat = df_master[df_master['Category'] == cat_code].copy()
     
-    df_master, source_info = load_sctr_master()
+    st.subheader(f"{cat_name}（庫存總計: {len(df_cat):,} 隻）")
     
-    if df_master is None or df_master.empty:
-        st.warning(f"⚠️ 尚未能讀取全宇宙 SCTR Master 數據庫 ({source_info})，請確認 GitHub Actions 是否已執行完畢！")
-        return
-
-    st.success(f"🌐 成功連線全宇宙數據庫 [{source_info}]！共計載入 **{len(df_master):,}** 隻資產。")
-
-    # ------------------------------------
-    # 🎯 定義 4 大獨立市場類別 (HK Equities, HK ETFs, US Equities, US ETFs)
-    # ------------------------------------
-    category_map = {
-        "HK_Equities": "🇭🇰 港股個股 (HK Equities)",
-        "HK_ETFs": "🇭🇰 港股 ETF (HK ETFs)",
-        "US_Equities": "🇺🇸 美股個股 (US Equities)",
-        "US_ETFs": "🇺🇸 美股 ETF (US ETFs)"
-    }
+    col_a, col_b = st.columns(2)
+    min_sctr = col_a.slider(f"[{cat_name}] SCTR 最低門檻", 50.0, 99.0, 80.0, 1.0, key=f"sctr_{cat_code}")
+    max_scan = col_b.slider(f"[{cat_name}] 掃描 Top 數量上限", 20, 300, 100, 10, key=f"max_{cat_code}")
     
-    if 'Category' in df_master.columns:
-        df_master['Category_Label'] = df_master['Category'].map(category_map).fillna(df_master['Category'])
-    else:
-        df_master['Category_Label'] = "未分類"
-
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🛸 四大全宇宙資產選擇")
-    
-    available_labels = list(category_map.values())
-    selected_labels = st.sidebar.multiselect(
-        "選擇掃描市場類別 (可複選)", 
-        available_labels, 
-        default=available_labels
-    )
-    
-    min_sctr = st.sidebar.slider("SCTR 最低百分位門檻", 50.0, 99.0, 80.0, 1.0)
-    max_scan_count = st.sidebar.slider("掃描標的數量上限 (預防網頁卡頓)", 50, 500, 150, 50)
-    
-    # 依 4 大分立市場進行過濾
-    df_filtered = df_master[df_master['Category_Label'].isin(selected_labels)].copy()
-    df_filtered = df_filtered[df_filtered['SCTR'] >= min_sctr].sort_values(by='SCTR', ascending=False)
-    
-    candidate_tickers = df_filtered['Ticker'].tolist()[:max_scan_count]
+    df_filtered = df_cat[df_cat['SCTR'] >= min_sctr].sort_values(by='SCTR', ascending=False)
+    candidate_tickers = df_filtered['Ticker'].tolist()[:max_scan]
     sctr_dict = dict(zip(df_filtered['Ticker'], df_filtered['SCTR']))
 
-    # 顯示 4 大類別各自的數據計數
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("🇭🇰 港股個股", f"{len(df_master[df_master['Category']=='HK_Equities']):,} 隻")
-    c2.metric("🇭🇰 港股 ETF", f"{len(df_master[df_master['Category']=='HK_ETFs']):,} 隻")
-    c3.metric("🇺🇸 美股個股", f"{len(df_master[df_master['Category']=='US_Equities']):,} 隻")
-    c4.metric("🇺🇸 美股 ETF", f"{len(df_master[df_master['Category']=='US_ETFs']):,} 隻")
+    st.info(f"📊 已鎖定 **{len(candidate_tickers)}** 隻 SCTR ≥ {min_sctr} 的頂尖強勢標的。")
 
-    st.info(f"📊 **目前符合條件 (SCTR ≥ {min_sctr}) 初選**：已鎖定前 **{len(candidate_tickers)}** 隻頂尖強勢股進行天外飛仙雙軌深度掃描。")
-
-    if st.button("🚀 開始全天外飛仙雙軌雷達大掃描", type="primary"):
-        with st.spinner(f"正在為 {len(candidate_tickers)} 隻標的下載最新行情與運算 21 大加分引擎..."):
+    # 🎯 獨立單一 Search 按鈕！
+    if st.button(f"🚀 開始【{cat_name}】獨立天外飛仙大掃描", type="primary", key=f"btn_{cat_code}"):
+        with st.spinner(f"正在為 [{cat_name}] {len(candidate_tickers)} 隻標的抓取行情與執行 Minervini 雙軌運算..."):
             hist_dict = fetch_historical_data(candidate_tickers)
-            feixian_results = []
+            results = []
             
             for ticker in candidate_tickers:
                 if ticker not in hist_dict:
                     continue
                 df_k = hist_dict[ticker]
                 sctr_rank = sctr_dict.get(ticker, 0.0)
-                
                 try:
                     df_res = run_tianwai_feixian(df_k, sctr_rank_from_master=sctr_rank)
                     if not df_res.empty:
@@ -484,10 +443,8 @@ def render_page_1a():
                         tags = last_row.get('天外飛仙_標籤', '')
                         
                         if state in [1, 2, 3] or score > 0 or len(tags) > 0:
-                            cat_label = df_master[df_master['Ticker'] == ticker]['Category_Label'].values[0] if ticker in df_master['Ticker'].values else '未知'
-                            feixian_results.append({
+                            results.append({
                                 'Ticker': ticker,
-                                '市場類別': cat_label,
                                 'SCTR排名': last_row.get('SCTR_Rank', sctr_rank),
                                 'SCTR4.0原始分': last_row.get('SCTR_Raw_4_0', 0),
                                 '霸王總分': round(score, 1),
@@ -500,23 +457,21 @@ def render_page_1a():
                 except Exception:
                     continue
             
-            if not feixian_results:
-                st.warning("⚠️ 經過天外飛仙嚴格篩選，初選標的中暫無觸發條件之標的。可嘗試調低 SCTR 門檻。")
+            if not results:
+                st.warning(f"⚠️ [{cat_name}] 暫無觸發熱區/特權之標的。可嘗試調低 SCTR 門檻。")
                 return
 
-            df_res_show = pd.DataFrame(feixian_results).sort_values(by='霸王總分', ascending=False)
+            df_show = pd.DataFrame(results).sort_values(by='霸王總分', ascending=False)
 
             m1, m2, m3 = st.columns(3)
-            m1.metric("👑 觸發標的總數", f"{len(df_res_show)} 隻")
-            m2.metric("🐉 包含真龍/真皇數量", f"{len(df_res_show[df_res_show['戰略標籤'].str.contains('真龍|真皇', na=False)])} 隻")
-            m3.metric("🔥 最佳霸王最高分", f"{df_res_show['霸王總分'].max()} 分")
+            m1.metric("👑 觸發標的數", f"{len(df_show)} 隻")
+            m2.metric("🐉 真龍/真皇數", f"{len(df_show[df_show['戰略標籤'].str.contains('真龍|真皇', na=False)])} 隻")
+            m3.metric("🔥 最高霸王總分", f"{df_show['霸王總分'].max()} 分")
 
-            st.subheader("🔥 龍魂戰略總部 - 天外飛仙二次篩選結果")
             st.dataframe(
-                df_res_show,
+                df_show,
                 column_config={
                     "Ticker": "代號",
-                    "市場類別": "資產類別",
                     "SCTR排名": st.column_config.NumberColumn("SCTR 排名", format="%.1f"),
                     "霸王總分": st.column_config.NumberColumn("霸王總分", format="%.1f"),
                     "戰略標籤": st.column_config.TextColumn("戰略標籤 / 爆發訊號", width="large")
@@ -524,6 +479,41 @@ def render_page_1a():
                 use_container_width=True,
                 hide_index=True
             )
+
+# ==========================================
+# 🖥️ 3. Streamlit 主 UI 渲染
+# ==========================================
+def render_page_1a():
+    st.title("🛸 艙房 1a：天外飛仙 (RS 強勢爆發獨立掃描器)")
+    st.caption("四大市場獨立分立 Search 站點：港股個股 | 港股 ETF | 美股個股 | 美股 ETF")
+    
+    df_master, source_info = load_sctr_master()
+    
+    if df_master is None or df_master.empty:
+        st.warning(f"⚠️ 尚未能讀取全宇宙 SCTR Master 數據庫 ({source_info})，請確認 GitHub Actions 是否已執行完畢！")
+        return
+
+    st.success(f"🌐 成功連線全宇宙數據庫 [{source_info}]！共計載入 **{len(df_master):,}** 隻資產。")
+
+    # 🎯 使用 4 個獨立 Tab 頁籤，每個頁籤內置專屬 Search 按鈕！
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "🇭🇰 港股個股 (HK Equities)",
+        "🇭🇰 港股 ETF (HK ETFs)",
+        "🇺🇸 美股個股 (US Equities)",
+        "🇺🇸 美股 ETF (US ETFs)"
+    ])
+
+    with tab1:
+        render_single_market_search("HK_Equities", "🇭🇰 港股個股", df_master)
+
+    with tab2:
+        render_single_market_search("HK_ETFs", "🇭🇰 港股 ETF", df_master)
+
+    with tab3:
+        render_single_market_search("US_Equities", "🇺🇸 美股個股", df_master)
+
+    with tab4:
+        render_single_market_search("US_ETFs", "🇺🇸 美股 ETF", df_master)
 
 if __name__ == "__main__":
     render_page_1a()
