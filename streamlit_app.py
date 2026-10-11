@@ -555,7 +555,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                         for err in debug_errors: st.write(f"- {err}")
 
         # ===============================================
-        # 顯示卡片結果區
+        # 顯示卡片結果區 (完美解決 Markdown 縮排 Bug 版)
         # ===============================================
         if st.session_state.get('dragon_results'):
             if st.session_state.get('sl_list'):
@@ -576,63 +576,41 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                 border_color = "#FF4B4B" if r.get('IsDead') else "#00FFCC"
                 
                 if st.session_state.scan_mode == 'HARDPENNY':
-                    st.markdown(f"""
-                    <div class='dragon-card' style='border-left: 5px solid {border_color};'>
-                        <div style='font-size:1.3rem;font-weight:bold;color:#FFFFFF;'>
-                            {r['Status']} {r['Ticker']} <span style='color:#00FFCC;'>({r['Sector']})</span>
-                        </div>
-                        <div class='data-row'>
-                            <b>糾纏度評分: {r['Score']}</b> | 
-                            <b style='color:#FF9900;'>3個月回報: {r.get('RawPower', 0)}% 🔥</b> | 
-                            <span style='color:#FF4B4B; font-weight:bold;'>🛑 止損(10-EMA): ${r['EMA10']}</span> | Bias: {r['Bias']}%<br>
-                            📈 RS: {r['RS']} | 🔋 ADR均幅: {r['EJ']}% | ⚡ 偏離200MA: {r['SE']}% | 🔥 50日均成交: ${r['Power']}M | 📊 OBV: {r.get('OBV', 'N/A')}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    card_html = (
+                        f"<div class='dragon-card' style='border-left: 5px solid {border_color};'>"
+                        f"<div style='font-size:1.3rem;font-weight:bold;color:#FFFFFF;'>{r['Status']} {r['Ticker']} <span style='color:#00FFCC;'>({r['Sector']})</span></div>"
+                        f"<div class='data-row'><b>糾纏度評分: {r['Score']}</b> | <b style='color:#FF9900;'>3個月回報: {r.get('RawPower', 0)}% 🔥</b> | <span style='color:#FF4B4B; font-weight:bold;'>🛑 止損(10-EMA): ${r['EMA10']}</span> | Bias: {r['Bias']}%<br>"
+                        f"📈 RS: {r['RS']} | 🔋 ADR均幅: {r['EJ']}% | ⚡ 偏離200MA: {r['SE']}% | 🔥 50日均成交: ${r['Power']}M | 📊 OBV: {r.get('OBV', 'N/A')}</div></div>"
+                    )
+                    st.markdown(card_html, unsafe_allow_html=True)
                 
                 elif st.session_state.scan_mode == 'TIANWAI_RS':
                     sctr = r.get('SCTR_Score', 0)
                     is_dragon = r.get('Is_True_Dragon', False)
                     sctr_color = "#FFD700" if sctr >= 90 else "#00FFCC"
                     
-                    dragon_html = ""
-                    if is_dragon:
-                        dragon_html = "<span style='color: #FFD700; font-size: 1.6rem; font-weight: 900; margin-left:10px; text-shadow: 0 0 10px #FFD700;'>👑真龍</span>"
-                    
+                    dragon_html = f"<span style='color: #FFD700; font-size: 1.6rem; font-weight: 900; margin-left:10px; text-shadow: 0 0 10px #FFD700;'>👑真龍</span>" if is_dragon else ""
                     display_icons = r['Icons'].replace("👑真龍 | ", "").replace("👑真龍", "")
                     
-                    st.markdown(f"""
-                    <div class='dragon-card' style='border-left: 5px solid {border_color};'>
-                        <div style='font-size:1.3rem;font-weight:bold;color:#FFFFFF; display:flex; align-items:center;'>
-                            {r['Status']} {r['Ticker']} <span style='color:#00FFCC; margin-left:5px;'>({r['Sector']})</span>
-                            <span style='color:{sctr_color}; font-size:1.5rem; font-weight:bold; margin-left:15px;'>SCTR: {sctr}</span>
-                            {dragon_html}
-                        </div>
-                        <div style='font-size:1.1rem; font-weight:bold; color:#FFD700; margin-top:5px;'>{display_icons}</div>
-                        <div class='data-row'>
-                            <b>戰術總分: {r['Score']}分</b> | 
-                            <b style='color:#FF9900;'>原始戰力: {r.get('RawPower', 0)} 🔥</b> | 
-                            <span style='color:#FF4B4B; font-weight:bold;'>🛑 止損(10-EMA): ${r['EMA10']}</span> | Bias: {r['Bias']}%<br>
-                            📈 RS: {r['RS']} | 🔋 EJ: {r['EJ']} | ⚡ SE: {r['SE']} | 🔥 買盤力: {r['Power']}x | 📊 OBV: {r.get('OBV', 'N/A')}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    card_html = (
+                        f"<div class='dragon-card' style='border-left: 5px solid {border_color};'>"
+                        f"<div style='font-size:1.3rem;font-weight:bold;color:#FFFFFF; display:flex; align-items:center; flex-wrap:wrap;'>"
+                        f"<span>{r['Status']} {r['Ticker']}</span> <span style='color:#00FFCC; margin-left:5px; margin-right:15px;'>({r['Sector']})</span>"
+                        f"<span style='color:{sctr_color}; font-size:1.5rem; font-weight:bold;'>SCTR: {sctr}</span>{dragon_html}</div>"
+                        f"<div style='font-size:1.1rem; font-weight:bold; color:#FFD700; margin-top:5px;'>{display_icons}</div>"
+                        f"<div class='data-row'><b>戰術總分: {r['Score']}分</b> | <b style='color:#FF9900;'>原始戰力: {r.get('RawPower', 0)} 🔥</b> | <span style='color:#FF4B4B; font-weight:bold;'>🛑 止損(10-EMA): ${r['EMA10']}</span> | Bias: {r['Bias']}%<br>"
+                        f"📈 RS: {r['RS']} | 🔋 EJ: {r['EJ']} | ⚡ SE: {r['SE']} | 🔥 買盤力: {r['Power']}x | 📊 OBV: {r.get('OBV', 'N/A')}</div></div>"
+                    )
+                    st.markdown(card_html, unsafe_allow_html=True)
 
                 else:
-                    st.markdown(f"""
-                    <div class='dragon-card' style='border-left: 5px solid {border_color};'>
-                        <div style='font-size:1.3rem;font-weight:bold;color:#FFFFFF;'>
-                            {r['Status']} {r['Ticker']} <span style='color:#00FFCC;'>({r['Sector']})</span> | <span style='color:#FFD700;'>{r['Icons']}</span>
-                        </div>
-                        <div class='data-row'>
-                            <b>戰術總分: {r['Score']}分</b> | 
-                            <b style='color:#FF9900;'>原始戰力: {r.get('RawPower', 0)} 🔥</b> | 
-                            <b style='color:#FF4B4B;'>扣分: {r.get('Penalty', 0)} 🛑</b> | 
-                            <span style='color:#FF4B4B; font-weight:bold;'>🛑 止損(10-EMA): ${r['EMA10']}</span> | Bias: {r['Bias']}%<br>
-                            📈 RS: {r['RS']} | 🔋 EJ: {r['EJ']} | ⚡ SE: {r['SE']} | 🔥 買盤力: {r['Power']}x | 📊 OBV: {r.get('OBV', 'N/A')}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    card_html = (
+                        f"<div class='dragon-card' style='border-left: 5px solid {border_color};'>"
+                        f"<div style='font-size:1.3rem;font-weight:bold;color:#FFFFFF;'>{r['Status']} {r['Ticker']} <span style='color:#00FFCC;'>({r['Sector']})</span> | <span style='color:#FFD700;'>{r['Icons']}</span></div>"
+                        f"<div class='data-row'><b>戰術總分: {r['Score']}分</b> | <b style='color:#FF9900;'>原始戰力: {r.get('RawPower', 0)} 🔥</b> | <b style='color:#FF4B4B;'>扣分: {r.get('Penalty', 0)} 🛑</b> | <span style='color:#FF4B4B; font-weight:bold;'>🛑 止損(10-EMA): ${r['EMA10']}</span> | Bias: {r['Bias']}%<br>"
+                        f"📈 RS: {r['RS']} | 🔋 EJ: {r['EJ']} | ⚡ SE: {r['SE']} | 🔥 買盤力: {r['Power']}x | 📊 OBV: {r.get('OBV', 'N/A')}</div></div>"
+                    )
+                    st.markdown(card_html, unsafe_allow_html=True)
 
         # ===============================================
         # 全黑戰術圖表繪製
