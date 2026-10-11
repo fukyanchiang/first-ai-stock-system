@@ -3,7 +3,7 @@ import numpy as np
 
 def run_tianwai_feixian(df: pd.DataFrame) -> pd.DataFrame:
     """
-    龍魂戰略總部 - 天外飛仙RS (第 7 掣) Python 量化引擎 (100% 原裝 SCTR 原始分版)
+    龍魂戰略總部 - 天外飛仙RS (第 7 掣) Python 量化引擎 (100% 原裝 SCTR 原始分真皇真龍版)
     """
     df = df.sort_index().copy()
     
@@ -108,7 +108,7 @@ def run_tianwai_feixian(df: pd.DataFrame) -> pd.DataFrame:
     IS_TTM_TRUE_ORANGE = (TTM_MOMENTUM > 0) & TTM_STAGE2_ON
 
     # ==========================================
-    # 🚨 雙軌掃股演算法 (標準飛仙 vs 原裝 SCTR 特權)
+    # 🚨 雙軌掃股演算法 (標準飛仙 vs SCTR $\ge$ 35 特權)
     # ==========================================
     IS_CORE_MATCH = STAGE2 & IS_MACD_ORANGE & IS_TTM_TRUE_ORANGE
 
@@ -119,11 +119,12 @@ def run_tianwai_feixian(df: pd.DataFrame) -> pd.DataFrame:
     IS_HOT_WINDOW = (streak_series >= 1) & (streak_series <= 3)
     IS_COOL_WINDOW = (streak_series >= 4) & (streak_series <= 10)
     
-    # 🔥 軌道 B：未符合天外飛仙，但 SCTR 原始分 >= 25 且正在上升
-    IS_SCTR_PRIVILEGE = (SCTR_SCORE >= 25) & SCTR_RISING & (~IS_HOT_WINDOW)
+    # 🔥 軌道 B：未符合天外飛仙，但 SCTR 原始分 >= 35 且正在上升 (特權強制掃出)
+    IS_SCTR_PRIVILEGE = (SCTR_SCORE >= 35) & SCTR_RISING & (~IS_HOT_WINDOW)
     
-    # 🐉 終極真龍：符合天外飛仙起爆條件，且 SCTR 原始分 >= 30 (絕對王者)
-    IS_TRUE_DRAGON = IS_HOT_WINDOW & (SCTR_SCORE >= 30)
+    # 🐉 終極真龍與真皇分級
+    IS_TRUE_EMPEROR = (SCTR_SCORE >= 35) & (SCTR_SCORE < 40)
+    IS_TRUE_DRAGON = (SCTR_SCORE >= 40)
 
     STATE_SERIES = pd.Series(np.where(IS_HOT_WINDOW, 1, np.where(IS_COOL_WINDOW, 2, np.where(IS_SCTR_PRIVILEGE, 3, 0))), index=df.index)
 
@@ -320,8 +321,9 @@ def run_tianwai_feixian(df: pd.DataFrame) -> pd.DataFrame:
     
     tags = []
     
-    # 🌟 插入「真龍」最強標籤
-    if get_bool(IS_TRUE_DRAGON): tags.append("👑真龍")
+    # 🌟 插入「雙重王者」標籤
+    if get_bool(IS_TRUE_DRAGON): tags.append("👑👑真龍")
+    elif get_bool(IS_TRUE_EMPEROR): tags.append("👑真皇")
     
     if get_bool(SPRING_SIGNAL): tags.append("⚡爆邊(非💰)")
     if get_bool(SHOW_BIG_MONEY): tags.append("💰錢袋")
@@ -350,7 +352,7 @@ def run_tianwai_feixian(df: pd.DataFrame) -> pd.DataFrame:
     if get_bool(PZ_BUY2): tags.append("🚀浴火重生")
     if get_bool(PZ_BUY1): tags.append("■PZ大注■")
     
-    # 加入軌道 B (未符合飛仙) 的專屬標籤
+    # 加入軌道 B (未符合飛仙強制掃出) 的專屬標籤
     tags_str = " | ".join(tags) if tags else ""
     if get_bool(IS_SCTR_PRIVILEGE):
         tags_str = "（未符合飛仙） | " + tags_str if tags_str else "（未符合飛仙）"
@@ -365,9 +367,10 @@ def run_tianwai_feixian(df: pd.DataFrame) -> pd.DataFrame:
     TOTAL_SCORE = BASE_SCORE + (len(tags) * 10) + SCTR_SCORE
     df['霸王總分'] = pd.Series(TOTAL_SCORE, index=df.index).fillna(-9999).astype(float)
     
-    # 紀錄 SCTR 分數與真龍標記
+    # 紀錄 SCTR 分數與真龍/真皇等級標記 (0=無, 1=真皇, 2=真龍)
+    dragon_level = np.where(IS_TRUE_DRAGON, 2, np.where(IS_TRUE_EMPEROR, 1, 0))
     df['SCTR_Score'] = SCTR_SCORE.fillna(0).round(1)
-    df['真龍_標記'] = pd.Series(IS_TRUE_DRAGON, index=df.index).fillna(False)
+    df['Dragon_Level'] = pd.Series(dragon_level, index=df.index).fillna(0).astype(int)
     
     df['起爆日數'] = streak_series.fillna(0).astype(int)
     df['Power'] = POWER.fillna(0)
