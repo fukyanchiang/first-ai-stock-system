@@ -24,14 +24,15 @@ def fetch_github_list(url):
         return df
     except: return pd.DataFrame()
 
-# 讀取後台計好的全宇宙 SCTR 排名大字典
-@st.cache_data(ttl=1800)
+# 讀取後台計好的全宇宙 SCTR 排名大字典 (即時讀取，不加 cache 防舊數據殘留)
 def load_sctr_master_dict():
     if os.path.exists("SCTR_Master.csv"):
         try:
             m_df = pd.read_csv("SCTR_Master.csv")
-            return dict(zip(m_df['Ticker'].astype(str), m_df['SCTR_Rank']))
-        except: pass
+            m_df['Ticker'] = m_df['Ticker'].astype(str).str.strip()
+            return dict(zip(m_df['Ticker'], m_df['SCTR_Rank']))
+        except Exception as e:
+            pass
     return {}
 
 sctr_master_dict = load_sctr_master_dict()
@@ -184,7 +185,7 @@ with st.sidebar:
         ]
     )
     st.markdown("---")
-    st.caption("👴 爺爺的操盤矩陣 V188.13 (方案二：全場排名 + 紫色動能版)")
+    st.caption("👴 爺爺的操盤矩陣 V188.14 (全宇宙字典即時讀取版)")
 
 if operation_mode == "🐉 龍魂神殿雷達系統":
     MEMORY_FILE = "dragon_memory.json"
@@ -465,6 +466,9 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
         if btn_radar and selected_tickers:
             st.info(f"🚀 啟動極致穩定雷達 ({len(selected_tickers)} 隻) | 模式: {st.session_state.run_mode}...")
             
+            # 即時重新讀取最新 SCTR 大字典，確保唔會讀到舊快取
+            current_sctr_dict = load_sctr_master_dict()
+            
             status_text = st.empty()
             pb = st.progress(0)
             
@@ -487,8 +491,8 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                             is_rs_mode = (st.session_state.run_mode == 'TIANWAI_RS')
                             
                             # 讀取後台計好嘅 SCTR 排名字典 (方案二)
-                            clean_t = t.replace(".HK", "")
-                            t_rank = sctr_master_dict.get(t, sctr_master_dict.get(clean_t, 0.0))
+                            clean_t = str(t).replace(".HK", "").strip()
+                            t_rank = current_sctr_dict.get(str(t).strip(), current_sctr_dict.get(clean_t, 0.0))
                             
                             if is_rs_mode: res_df = run_tianwai_feixian_rs(df, sctr_rank_from_master=t_rank)
                             else: res_df = run_tianwai_feixian(df)
