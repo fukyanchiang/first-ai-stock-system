@@ -317,6 +317,8 @@ def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) ->
     VCX_CLIMAX = (V > HHV(V, 60).shift(1).bfill().fillna(0)) & (V > MA(V, 30).fillna(0) * 2.5) & (H >= HHV(H, 60).shift(1).bfill().fillna(0)) & (VCX_WR > -10)
 
     # 🚨 防彈組裝標籤
+    def get_bool(s): return bool(pd.Series(s).fillna(False).iloc[-1]) # ✅ 已加回呢行
+    
     tags = []
     if get_bool(IS_TRUE_DRAGON): tags.append("👑👑真龍")
     elif get_bool(IS_TRUE_EMPEROR): tags.append("👑真皇")
