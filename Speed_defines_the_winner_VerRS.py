@@ -119,10 +119,10 @@ def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) ->
     IS_HOT_WINDOW = (streak_series >= 1) & (streak_series <= 3)
     IS_COOL_WINDOW = (streak_series >= 4) & (streak_series <= 10)
     
-    # 🔥 軌道 B：未符合天外飛仙，但 全場排名 >= 85分 且原始動能上升中 (特權強制掃出)
-    IS_SCTR_PRIVILEGE = (FINAL_SCTR_RANK >= 85) & SCTR_RISING & (~IS_HOT_WINDOW)
+    # 🔥 軌道 B：未符合天外飛仙，但 全場排名 >= 90分 且原始動能上升中 (特權強制掃出)
+    IS_SCTR_PRIVILEGE = (FINAL_SCTR_RANK >= 90) & SCTR_RISING & (~IS_HOT_WINDOW)
     
-    # 🐉 真皇 (85-90%) 與 真龍 (90%以上)
+    # 🐉 真皇 (85-89.9%) 與 真龍 (90%以上)
     IS_TRUE_EMPEROR = (FINAL_SCTR_RANK >= 85) & (FINAL_SCTR_RANK < 90)
     IS_TRUE_DRAGON = (FINAL_SCTR_RANK >= 90)
 
@@ -317,7 +317,7 @@ def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) ->
     VCX_CLIMAX = (V > HHV(V, 60).shift(1).bfill().fillna(0)) & (V > MA(V, 30).fillna(0) * 2.5) & (H >= HHV(H, 60).shift(1).bfill().fillna(0)) & (VCX_WR > -10)
 
     # 🚨 防彈組裝標籤
-    def get_bool(s): return bool(pd.Series(s).fillna(False).iloc[-1]) # ✅ 已加回呢行
+    def get_bool(s): return bool(pd.Series(s).fillna(False).iloc[-1])
     
     tags = []
     if get_bool(IS_TRUE_DRAGON): tags.append("👑👑真龍")
@@ -351,8 +351,11 @@ def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) ->
     if get_bool(PZ_BUY1): tags.append("■PZ大注■")
     
     tags_str = " | ".join(tags) if tags else ""
+    
+    # 🎯 檢查是否啟用軌道 B (特權強制掃出)
     if get_bool(IS_SCTR_PRIVILEGE):
-        tags_str = "（未符合飛仙） | " + tags_str if tags_str else "（未符合飛仙）"
+        # 依照你的要求，將顯示文字精準改為「非合乎飛仙」
+        tags_str = "（非合乎飛仙） | " + tags_str if tags_str else "（非合乎飛仙）"
 
     # ==========================================
     # 輸出結算
