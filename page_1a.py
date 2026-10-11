@@ -6,7 +6,7 @@ import streamlit as st
 from datetime import datetime
 
 # ==========================================
-# 🛸 1. 內置天外飛仙 RS 核心演算法 (免 Import)
+# 🛸 1. 內置天外飛仙 RS 核心演算法
 # ==========================================
 def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) -> pd.DataFrame:
     df = df.sort_index().copy()
@@ -406,7 +406,7 @@ def fetch_historical_data(tickers):
         return {}
 
 # ==========================================
-# 🎯 單一獨立市場渲染組件 (獨立 Search 按鈕)
+# 🎯 單一獨立市場渲染組件 (極致欄位寬度調整)
 # ==========================================
 def render_single_market_search(cat_code, cat_name, df_master):
     df_cat = df_master[df_master['Category'] == cat_code].copy()
@@ -423,7 +423,6 @@ def render_single_market_search(cat_code, cat_name, df_master):
 
     st.info(f"📊 已鎖定 **{len(candidate_tickers)}** 隻 SCTR ≥ {min_sctr} 的頂尖強勢標的。")
 
-    # 🎯 獨立單一 Search 按鈕！
     if st.button(f"🚀 開始【{cat_name}】獨立天外飛仙大掃描", type="primary", key=f"btn_{cat_code}"):
         with st.spinner(f"正在為 [{cat_name}] {len(candidate_tickers)} 隻標的抓取行情與執行 Minervini 雙軌運算..."):
             hist_dict = fetch_historical_data(candidate_tickers)
@@ -468,12 +467,18 @@ def render_single_market_search(cat_code, cat_name, df_master):
             m2.metric("🐉 真龍/真皇數", f"{len(df_show[df_show['戰略標籤'].str.contains('真龍|真皇', na=False)])} 隻")
             m3.metric("🔥 最高霸王總分", f"{df_show['霸王總分'].max()} 分")
 
+            # 🎯 精細化欄位寬度：縮緊數值欄，為「戰略標籤」預留超大寬度
             st.dataframe(
                 df_show,
                 column_config={
-                    "Ticker": "代號",
-                    "SCTR排名": st.column_config.NumberColumn("SCTR 排名", format="%.1f"),
-                    "霸王總分": st.column_config.NumberColumn("霸王總分", format="%.1f"),
+                    "Ticker": st.column_config.TextColumn("代號", width="small"),
+                    "SCTR排名": st.column_config.NumberColumn("SCTR 排名", format="%.1f", width="small"),
+                    "SCTR4.0原始分": st.column_config.NumberColumn("SCTR4.0", format="%.1f", width="small"),
+                    "霸王總分": st.column_config.NumberColumn("霸王總分", format="%.1f", width="small"),
+                    "最新收盤價": st.column_config.NumberColumn("最新價", format="%.2f", width="small"),
+                    "起爆日數": st.column_config.NumberColumn("起爆日數", format="%d", width="small"),
+                    "RS強度": st.column_config.NumberColumn("RS強度", format="%.2f", width="small"),
+                    "量比": st.column_config.NumberColumn("量比", format="%.2f", width="small"),
                     "戰略標籤": st.column_config.TextColumn("戰略標籤 / 爆發訊號", width="large")
                 },
                 use_container_width=True,
@@ -495,7 +500,6 @@ def render_page_1a():
 
     st.success(f"🌐 成功連線全宇宙數據庫 [{source_info}]！共計載入 **{len(df_master):,}** 隻資產。")
 
-    # 🎯 使用 4 個獨立 Tab 頁籤，每個頁籤內置專屬 Search 按鈕！
     tab1, tab2, tab3, tab4 = st.tabs([
         "🇭🇰 港股個股 (HK Equities)",
         "🇭🇰 港股 ETF (HK ETFs)",
