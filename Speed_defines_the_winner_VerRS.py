@@ -57,7 +57,7 @@ def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) ->
     RSI_VAL = SMA(pd.Series(UP_RSI, index=df.index), 14) / (SMA(pd.Series(ABS_RSI, index=df.index), 14) + 1e-5) * 100
 
     # ==========================================
-    # 🔮 計算真實的 SCTR 4.0 (絕對原始分，可達200+，專供紫色顯示)
+    # 🔮 計算真實的 SCTR 4.0 (絕對原始分，專供紫色顯示)
     # ==========================================
     L_EMA200 = EMA(C, 200)
     L_EMA_D = (C - L_EMA200) / L_EMA200 * 100
@@ -78,7 +78,7 @@ def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) ->
     S_TOTAL_4_0 = (L_EMA_S + L_ROC_S + M_EMA_S + M_ROC_S + S_PPO_S + S_RSI_S)
     SCTR_RAW_4_0 = (S_TOTAL_4_0 / 10) + 50
 
-    # 排名分處理 (如果無後台檔案，保底俾佢0分，免除報錯)
+    # 排名分處理
     FINAL_SCTR_RANK = pd.Series(sctr_rank_from_master, index=df.index)
     SCTR_RISING = SCTR_RAW_4_0 >= SCTR_RAW_4_0.shift(1).fillna(0)
 
@@ -320,8 +320,6 @@ def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) ->
     def get_bool(s): return bool(pd.Series(s).fillna(False).iloc[-1])
     
     tags = []
-    
-    # 🌟 插入「雙重王者」標籤
     if get_bool(IS_TRUE_DRAGON): tags.append("👑👑真龍")
     elif get_bool(IS_TRUE_EMPEROR): tags.append("👑真皇")
     
@@ -352,25 +350,22 @@ def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) ->
     if get_bool(PZ_BUY2): tags.append("🚀浴火重生")
     if get_bool(PZ_BUY1): tags.append("■PZ大注■")
     
-    # 加入軌道 B (未符合飛仙強制掃出) 的專屬標籤
     tags_str = " | ".join(tags) if tags else ""
     if get_bool(IS_SCTR_PRIVILEGE):
         tags_str = "（未符合飛仙） | " + tags_str if tags_str else "（未符合飛仙）"
 
     # ==========================================
-    # 輸出結算 (戰術總分 = 基礎 + 標籤 + 0-99全場排名分)
+    # 輸出結算
     # ==========================================
     df['天外飛仙_狀態'] = STATE_SERIES
     BASE_SCORE = np.where(IS_HOT_WINDOW, 100, np.where(IS_SCTR_PRIVILEGE, 0, np.where(IS_COOL_WINDOW, 0, -9999)))
     
-    # 新戰術總分算式：用 FINAL_SCTR_RANK (0-99.9) 排隊，避免被 200幾分擾亂
     TOTAL_SCORE = BASE_SCORE + (len(tags) * 10) + FINAL_SCTR_RANK
     df['霸王總分'] = pd.Series(TOTAL_SCORE, index=df.index).fillna(-9999).astype(float)
     
-    # 紀錄 分數與真龍/真皇等級標記 (0=無, 1=真皇, 2=真龍)
     dragon_level = np.where(IS_TRUE_DRAGON, 2, np.where(IS_TRUE_EMPEROR, 1, 0))
     df['SCTR_Rank'] = FINAL_SCTR_RANK.fillna(0).round(1)
-    df['SCTR_Raw_4_0'] = SCTR_RAW_4_0.fillna(0).round(1) # 紫色顯示專用
+    df['SCTR_Raw_4_0'] = SCTR_RAW_4_0.fillna(0).round(1)
     df['Dragon_Level'] = pd.Series(dragon_level, index=df.index).fillna(0).astype(int)
     
     df['起爆日數'] = streak_series.fillna(0).astype(int)
