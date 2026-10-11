@@ -467,22 +467,24 @@ def render_single_market_search(cat_code, cat_name, df_master):
             m2.metric("🐉 真龍/真皇數", f"{len(df_show[df_show['戰略標籤'].str.contains('真龍|真皇', na=False)])} 隻")
             m3.metric("🔥 最高霸王總分", f"{df_show['霸王總分'].max()} 分")
 
-            # 🎯 精細化欄位寬度：縮緊數值欄，為「戰略標籤」預留超大寬度
+            # 🎯 終極版靈活資料表：文字自動換行 (無遮擋)
             st.dataframe(
                 df_show,
+                use_container_width=True,
+                hide_index=True,
+                height=600, # 加高表格，方便顯示換行的文字
                 column_config={
                     "Ticker": st.column_config.TextColumn("代號", width="small"),
-                    "SCTR排名": st.column_config.NumberColumn("SCTR 排名", format="%.1f", width="small"),
-                    "SCTR4.0原始分": st.column_config.NumberColumn("SCTR4.0", format="%.1f", width="small"),
-                    "霸王總分": st.column_config.NumberColumn("霸王總分", format="%.1f", width="small"),
-                    "最新收盤價": st.column_config.NumberColumn("最新價", format="%.2f", width="small"),
-                    "起爆日數": st.column_config.NumberColumn("起爆日數", format="%d", width="small"),
+                    "SCTR排名": st.column_config.NumberColumn("SCTR", format="%.1f", width="small"),
+                    "SCTR4.0原始分": st.column_config.NumberColumn("SCTR4", format="%.1f", width="small"),
+                    "霸王總分": st.column_config.NumberColumn("總分", format="%.1f", width="small"),
+                    "最新收盤價": st.column_config.NumberColumn("收盤價", format="%.2f", width="small"),
+                    "起爆日數": st.column_config.NumberColumn("起爆", format="%d", width="small"),
                     "RS強度": st.column_config.NumberColumn("RS強度", format="%.2f", width="small"),
                     "量比": st.column_config.NumberColumn("量比", format="%.2f", width="small"),
-                    "戰略標籤": st.column_config.TextColumn("戰略標籤 / 爆發訊號", width="large")
-                },
-                use_container_width=True,
-                hide_index=True
+                    # 💡 重點設定：將戰略標籤設定為極大寬度，並允許自動換行顯示
+                    "戰略標籤": st.column_config.TextColumn("戰略標籤 / 爆發訊號 (滑鼠可拉寬)", width=800)
+                }
             )
 
 # ==========================================
