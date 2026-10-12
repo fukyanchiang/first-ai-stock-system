@@ -26,36 +26,39 @@ def fetch_github_list(url):
         return df
     except: return pd.DataFrame()
 
-# 🌟 爺爺終極版：多重影分身 SCTR 字典生成
+# 🌟 爺爺終極版：優先讀取本地檔案！(避免讀取 GitHub 舊檔)
 @st.cache_data(ttl=60)
 def load_sctr_master_dict():
     m_df = None
-    try:
-        m_df = pd.read_csv(RAW_SCTR_MASTER_URL)
-    except Exception:
-        if os.path.exists("SCTR_Master.csv"):
-            try: m_df = pd.read_csv("SCTR_Master.csv")
-            except Exception: pass
+    # 1. 絕對優先讀取本地最新生成嘅 CSV
+    if os.path.exists("SCTR_Master.csv"):
+        try: m_df = pd.read_csv("SCTR_Master.csv")
+        except Exception: pass
+        
+    # 2. 如果本地冇，先去 GitHub 攞
+    if m_df is None or m_df.empty:
+        try: m_df = pd.read_csv(RAW_SCTR_MASTER_URL)
+        except Exception: pass
 
     sctr_dict = {}
     if m_df is not None and not m_df.empty:
         try:
-            sctr_col = 'SCTR' if 'SCTR' in m_df.columns else ('SCTR_Rank' if 'SCTR_Rank' in m_df.columns else None)
-            if sctr_col and 'Ticker' in m_df.columns:
+            # 智能捕捉欄位名 (無視大小寫)
+            t_col = next((c for c in m_df.columns if str(c).lower() in ['ticker', 'symbol', 'code']), None)
+            s_col = next((c for c in m_df.columns if 'sctr' in str(c).lower() or 'rank' in str(c).lower()), None)
+            
+            if t_col and s_col:
                 for _, row in m_df.iterrows():
-                    raw_t = str(row['Ticker']).upper().strip()
-                    try: score = float(row[sctr_col])
+                    raw_t = str(row[t_col]).upper().strip()
+                    try: score = float(row[s_col])
                     except: score = 0.0
                     
                     sctr_dict[raw_t] = score
-                    
-                    # 暴力拆解所有數字 (應對 "1398 HK", "HK.1398" 等各種騎呢 Format)
                     digits = re.sub(r'\D', '', raw_t)
                     if digits:
-                        sctr_dict[digits] = score             # 對應 "1398"
-                        sctr_dict[digits.zfill(5)] = score    # 對應 "01398"
-        except Exception:
-            pass
+                        sctr_dict[digits] = score             
+                        sctr_dict[digits.zfill(5)] = score    
+        except Exception: pass
     return sctr_dict
 
 sctr_master_dict = load_sctr_master_dict()
@@ -76,8 +79,7 @@ def run_hardpenny_logic(df: pd.DataFrame, symbol: str, sector: str) -> dict:
     for w in range(5, 40):
         w_high = float(high.tail(w).max())
         w_low = float(low.tail(w).min())
-        if w_low > 0 and (w_high - w_low) / w_low < 0.08:
-            cond3_4 = True; break
+        if w_low > 0 and (w_high - w_low) / w_low < 0.08: cond3_4 = True; break
     adr = float(((high - low) / low).tail(20).mean())
     cond5 = adr > 0.035
     cond6 = c_curr > 5.0
@@ -176,12 +178,25 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 🛠️ 爺爺 DEBUG 站")
     if not sctr_master_dict:
-        st.error("⚠️ SCTR 數據庫未成功載入 (0 筆)！請檢查 GitHub 連結！")
+        st.error("⚠️ SCTR 數據庫未成功載入 (0 筆)！")
     else:
         st.success(f"✅ SCTR 數據庫載入成功 ({len(sctr_master_dict)} 筆)")
         
+        # 🌟 爺爺特製字典 X 光機
+        st.write("---")
+        test_t = st.text_input("🔍 X光機：查字典 (如 1919)", "")
+        if test_t:
+            tc = test_t.upper().strip().replace(".HK", "").replace(".US", "")
+            td = re.sub(r'\D', '', test_t)
+            v = sctr_master_dict.get(test_t) or sctr_master_dict.get(tc) or (sctr_master_dict.get(td.zfill(5)) if td else None) or (sctr_master_dict.get(td) if td else None)
+            if v is not None:
+                st.success(f"🟢 字典內找到 {test_t}: {v} 分！")
+            else:
+                st.error(f"🔴 字典內完全冇 {test_t} 嘅紀錄！")
+                st.info("💡 解決方法：如果 X光機顯示紅燈，代表你本地嘅 `SCTR_Master.csv` 根本冇將 1919 放落去（可能被你的 SCTR 生成腳本嘅成交量條件過濾咗）。請重新跑一次你嘅 SCTR 生成器，確保生成出嚟嘅 CSV 裡面有 1919 呢隻股票！")
+        
     st.markdown("---")
-    st.caption("👴 爺爺的操盤矩陣 V188.17 (強制注入 Override 修復版)")
+    st.caption("👴 爺爺的操盤矩陣 V188.19 (強制本地讀取 + X光機版)")
 
 if operation_mode == "🐉 龍魂神殿雷達系統":
     MEMORY_FILE = "dragon_memory.json"
@@ -435,7 +450,6 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                         if st.session_state.run_mode in ['TIANWAI', 'TIANWAI_RS']:
                             is_rs_mode = (st.session_state.run_mode == 'TIANWAI_RS')
                             
-                            # 🌟 爺爺終極版：暴力比對法 (查盡一切可能 Key)
                             raw_query = str(t).upper().strip()
                             clean_query = raw_query.replace(".HK", "").replace(".US", "").strip()
                             digits_only = re.sub(r'\D', '', raw_query)
@@ -475,10 +489,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                                     'OBV': '狀態 1' if latest['天外飛仙_狀態'] == 1 else '狀態 2',
                                     'Icons': latest.get('天外飛仙_標籤', ''),
                                     'IsDead': False,
-                                    
-                                    # 🌟 暴力注入：唔理 latest 有無 SCTR_Rank，強行用我哋查到嘅 t_rank 填入 UI！
                                     'SCTR_Rank': t_rank if is_rs_mode else None,
-                                    
                                     'SCTR_Raw_4_0': latest.get('SCTR_Raw_4_0', 0) if is_rs_mode else None,
                                     'Dragon_Level': latest.get('Dragon_Level', 0) if is_rs_mode else 0
                                 })
