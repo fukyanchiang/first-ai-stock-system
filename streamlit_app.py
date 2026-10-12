@@ -25,8 +25,8 @@ def fetch_github_list(url):
         return df
     except: return pd.DataFrame()
 
-# 🌟 爺爺終極國有大行修正版：強效修復前導 0 (如 01398 vs 1398) 比對漏洞
-@st.cache_data(ttl=300)
+# 🌟 爺爺萬能無死角字典重構版：對齊 4位/5位補零、.HK 後綴所有組合
+@st.cache_data(ttl=60)
 def load_sctr_master_dict():
     m_df = None
     try:
@@ -57,15 +57,15 @@ def load_sctr_master_dict():
                 sctr_dict[raw_t] = score
                 sctr_dict[clean_t] = score
                 
-                # 🌟 強效消除前導 0 (如 '01398' -> 1398 -> '1398') 並對齊所有可能的 Key
+                # 🌟 強效消除前導 0 並同時注入 4 位與 5 位數的各種 Key 組合
                 if clean_t.isdigit():
-                    num_str = str(int(clean_t))
-                    sctr_dict[num_str] = score
-                    sctr_dict[num_str.zfill(4)] = score
-                    sctr_dict[num_str.zfill(5)] = score
-                    sctr_dict[f"{num_str}.HK"] = score
-                    sctr_dict[f"{num_str.zfill(4)}.HK"] = score
-                    sctr_dict[f"{num_str.zfill(5)}.HK"] = score
+                    num = int(clean_t)
+                    sctr_dict[str(num)] = score                          # '1398'
+                    sctr_dict[f"{num:04d}"] = score                      # '1398'
+                    sctr_dict[f"{num:05d}"] = score                      # '01398'
+                    sctr_dict[f"{num}.HK"] = score                       # '1398.HK'
+                    sctr_dict[f"{num:04d}.HK"] = score                   # '1398.HK'
+                    sctr_dict[f"{num:05d}.HK"] = score                   # '01398.HK'
                     
             return sctr_dict
         except Exception:
@@ -536,21 +536,25 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                         if st.session_state.run_mode in ['TIANWAI', 'TIANWAI_RS']:
                             is_rs_mode = (st.session_state.run_mode == 'TIANWAI_RS')
                             
-                            # 🌟 多重容錯比對：支援強效無零代號
+                            # 🌟 萬能無死角匹配：逐級嘗試所有 Key 組合，確保 1398, 1288 100% 命中！
                             raw_t_str = str(t).strip()
                             clean_t = raw_t_str.replace(".HK", "").replace(".US", "").strip()
-                            num_clean = str(int(clean_t)) if clean_t.isdigit() else clean_t
                             
-                            t_rank = current_sctr_dict.get(
-                                raw_t_str, 
-                                current_sctr_dict.get(
-                                    clean_t, 
-                                    current_sctr_dict.get(
-                                        num_clean,
-                                        current_sctr_dict.get(num_clean.zfill(4), 0.0)
-                                    )
+                            t_rank = 0.0
+                            if clean_t.isdigit():
+                                num = int(clean_t)
+                                t_rank = (
+                                    current_sctr_dict.get(raw_t_str) or
+                                    current_sctr_dict.get(clean_t) or
+                                    current_sctr_dict.get(f"{num:05d}.HK") or
+                                    current_sctr_dict.get(f"{num:04d}.HK") or
+                                    current_sctr_dict.get(f"{num:05d}") or
+                                    current_sctr_dict.get(f"{num:04d}") or
+                                    current_sctr_dict.get(str(num)) or
+                                    0.0
                                 )
-                            )
+                            else:
+                                t_rank = current_sctr_dict.get(raw_t_str, current_sctr_dict.get(clean_t, 0.0))
                             
                             if is_rs_mode: res_df = run_tianwai_feixian_rs(df, sctr_rank_from_master=t_rank)
                             else: res_df = run_tianwai_feixian(df)
@@ -1092,7 +1096,7 @@ elif operation_mode == "💰 大戶資金流透視 (福德金字塔)":
                     
                     fig.add_trace(go.Scatter(x=dates, y=plot_df['CMF_20'], mode='lines', name='CMF (20日)', line=dict(color='#FF00FF', width=1.5)), row=3, col=1)
                     fig.add_trace(go.Scatter(x=dates, y=plot_df['CMF_60'], mode='lines', name='CMF (60日)', line=dict(color='white', width=2)), row=3, col=1)
-                    fig.add_hline(y=0, line_dash="dash", line_color="rgba(255,255,255,0.3)", row=3, col=1)
+                    fig.add_hline(y=0, line_dash="dash", line_color="rgba(255,255,255,0.3)", row=2, col=1)
                     
                     fig.update_layout(template="plotly_dark", paper_bgcolor='#0e1117', plot_bgcolor='#0e1117', height=950,
                                       hovermode='x unified', dragmode=False, xaxis_rangeslider_visible=False,
