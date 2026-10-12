@@ -78,8 +78,8 @@ def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) ->
     S_TOTAL_4_0 = (L_EMA_S + L_ROC_S + M_EMA_S + M_ROC_S + S_PPO_S + S_RSI_S)
     SCTR_RAW_4_0 = (S_TOTAL_4_0 / 10) + 50
 
-    # 排名分處理
-    FINAL_SCTR_RANK = pd.Series(sctr_rank_from_master, index=df.index)
+    # 🌟 爺爺終極手術：強制確保 float 填滿成條 Series，杜絕 NaN 產生 0.0！
+    FINAL_SCTR_RANK = pd.Series(np.full(len(df), float(sctr_rank_from_master)), index=df.index)
     SCTR_RISING = SCTR_RAW_4_0 >= SCTR_RAW_4_0.shift(1).fillna(0)
 
     # ==========================================
@@ -367,7 +367,10 @@ def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) ->
     df['霸王總分'] = pd.Series(TOTAL_SCORE, index=df.index).fillna(-9999).astype(float)
     
     dragon_level = np.where(IS_TRUE_DRAGON, 2, np.where(IS_TRUE_EMPEROR, 1, 0))
-    df['SCTR_Rank'] = FINAL_SCTR_RANK.fillna(0).round(1)
+    
+    # 🌟 爺爺終極確認：這裡已經保證可以食到剛剛強制填充好的 FINAL_SCTR_RANK
+    df['SCTR_Rank'] = FINAL_SCTR_RANK.fillna(0.0).round(1)
+    
     df['SCTR_Raw_4_0'] = SCTR_RAW_4_0.fillna(0).round(1)
     df['Dragon_Level'] = pd.Series(dragon_level, index=df.index).fillna(0).astype(int)
     
