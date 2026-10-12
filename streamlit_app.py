@@ -25,15 +25,13 @@ def fetch_github_list(url):
         return df
     except: return pd.DataFrame()
 
-# 🌟 爺爺重構快取版：加入 @st.cache_data(ttl=300) 避免重複下載大檔導致按鈕卡灰
+# 🌟 爺爺終極國有大行修正版：強效修復前導 0 (如 01398 vs 1398) 比對漏洞
 @st.cache_data(ttl=300)
 def load_sctr_master_dict():
     m_df = None
-    # 1. 優先直連 GitHub Raw 最新的 SCTR 數據庫
     try:
         m_df = pd.read_csv(RAW_SCTR_MASTER_URL)
     except Exception:
-        # 2. 若網絡異常，備份讀取本地 SCTR_Master.csv
         if os.path.exists("SCTR_Master.csv"):
             try:
                 m_df = pd.read_csv("SCTR_Master.csv")
@@ -59,10 +57,15 @@ def load_sctr_master_dict():
                 sctr_dict[raw_t] = score
                 sctr_dict[clean_t] = score
                 
+                # 🌟 強效消除前導 0 (如 '01398' -> 1398 -> '1398') 並對齊所有可能的 Key
                 if clean_t.isdigit():
-                    sctr_dict[clean_t.zfill(4)] = score
-                    sctr_dict[str(int(clean_t))] = score
-                    sctr_dict[clean_t.zfill(4) + ".HK"] = score
+                    num_str = str(int(clean_t))
+                    sctr_dict[num_str] = score
+                    sctr_dict[num_str.zfill(4)] = score
+                    sctr_dict[num_str.zfill(5)] = score
+                    sctr_dict[f"{num_str}.HK"] = score
+                    sctr_dict[f"{num_str.zfill(4)}.HK"] = score
+                    sctr_dict[f"{num_str.zfill(5)}.HK"] = score
                     
             return sctr_dict
         except Exception:
@@ -331,7 +334,6 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                 m = st.columns(4)
                 files = [("SP500_Equities.csv", "大藍籌"), ("Market_Focus.csv", "精選"), ("Industry_Focus.csv", "行業"), ("US_ETFs.csv", "美股ETF")]
                 
-                # 🌟 保底防錯機制：預設選定 US_ETFs.csv，防止未按按鈕時報錯
                 if 'active_file' not in st.session_state:
                     st.session_state.active_file = "US_ETFs.csv"
                     
@@ -347,7 +349,6 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                 m = st.columns(2)
                 files = [("hk_stock.csv", "港股個股"), ("hk_etf.csv", "港股ETF")]
                 
-                # 🌟 保底防錯機制：預設選定 hk_stock.csv
                 if 'active_file' not in st.session_state:
                     st.session_state.active_file = "hk_stock.csv"
                     
@@ -512,7 +513,6 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
         if btn_radar and selected_tickers:
             st.info(f"🚀 啟動極致穩定雷達 ({len(selected_tickers)} 隻) | 模式: {st.session_state.run_mode}...")
             
-            # 🌟 使用快取讀取 SCTR 大字典，速度提升 100 倍！
             current_sctr_dict = load_sctr_master_dict()
             
             status_text = st.empty()
@@ -536,14 +536,19 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                         if st.session_state.run_mode in ['TIANWAI', 'TIANWAI_RS']:
                             is_rs_mode = (st.session_state.run_mode == 'TIANWAI_RS')
                             
-                            # 🌟 雙向相容比對：先試原代號、再試去尾巴代號、再試 4 位補零代號
+                            # 🌟 多重容錯比對：支援強效無零代號
                             raw_t_str = str(t).strip()
                             clean_t = raw_t_str.replace(".HK", "").replace(".US", "").strip()
+                            num_clean = str(int(clean_t)) if clean_t.isdigit() else clean_t
+                            
                             t_rank = current_sctr_dict.get(
                                 raw_t_str, 
                                 current_sctr_dict.get(
                                     clean_t, 
-                                    current_sctr_dict.get(clean_t.zfill(4), 0.0)
+                                    current_sctr_dict.get(
+                                        num_clean,
+                                        current_sctr_dict.get(num_clean.zfill(4), 0.0)
+                                    )
                                 )
                             )
                             
@@ -630,7 +635,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                         for err in debug_errors: st.write(f"- {err}")
 
         # ===============================================
-        # 顯示卡片結果區 (已升級：絕對動能 4.0 換成高對比鮮橙色)
+        # 顯示卡片結果區
         # ===============================================
         if st.session_state.get('dragon_results'):
             if st.session_state.get('sl_list'):
