@@ -15,14 +15,13 @@ CSV_FILES = {
     "US_ETFs": "US_ETFs_All.csv"
 }
 
-def load_tickers_from_csv(file_path):
+def load_tickers_from_csv(file_path, category):
     if not os.path.exists(file_path):
         print(f"⚠️ 找不到檔案: {file_path}")
         return []
     
     try:
         df = pd.read_csv(file_path)
-        # 自動識別可能包含交易代號的欄位名稱
         possible_cols = ['Ticker', 'Symbol', 'Code', 'stock_code', 'ticker', 'symbol', 'code']
         found_col = None
         for col in df.columns:
@@ -33,8 +32,13 @@ def load_tickers_from_csv(file_path):
         if not found_col:
             found_col = df.columns[0]
             
-        tickers = df[found_col].dropna().astype(str).str.strip().tolist()
-        return tickers
+        tickers = df[found_col].dropna().astype(str).str.strip()
+        
+        # 自動為港股補上 .HK 後綴 (如果沒有的話)，確保 Yahoo Finance 能讀取
+        if "HK" in category:
+            tickers = tickers.apply(lambda x: f"{x.zfill(4)}.HK" if x.isdigit() else x)
+            
+        return tickers.tolist()
     except Exception as e:
         print(f"❌ 讀取 {file_path} 失敗: {e}")
         return []
@@ -43,32 +47,21 @@ def load_tickers_from_csv(file_path):
 # 2. SCTR 標準指標計算核心邏輯
 # ----------------------------------------------------
 def calculate_sctr_components(df):
-    """
-    計算標準 SCTR 成分指標：
-    - 長期 (60%): 200日 EMA 偏離度 (30%) + 125日 ROC (30%)
-    - 中期 (30%): 50日 EMA 偏離度 (15%) + 20日 ROC (15%)
-    - 短期 (10%): 14日 RSI (10%)
-    """
     if len(df) < 200:
         return None
     
     close = df['Close']
     
-    # 1. 200日 EMA 偏離度
     ema200 = close.ewm(span=200, adjust=False).mean()
     p_ema200 = ((close.iloc[-1] - ema200.iloc[-1]) / ema200.iloc[-1]) * 100
     
-    # 2. 125日 ROC
     roc125 = ((close.iloc[-1] - close.iloc[-125]) / close.iloc[-125]) * 100
     
-    # 3. 50日 EMA 偏離度
     ema50 = close.ewm(span=50, adjust=False).mean()
     p_ema50 = ((close.iloc[-1] - ema50.iloc[-1]) / ema50.iloc[-1]) * 100
     
-    # 4. 20日 ROC
     roc20 = ((close.iloc[-1] - close.iloc[-20]) / close.iloc[-20]) * 100
     
-    # 5. 14日 RSI
     delta = close.diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -94,22 +87,22 @@ def process_universe():
     
     for category, file_name in CSV_FILES.items():
         print(f"\n📂 讀取類別 [{category}] <- 檔案: {file_name}...")
-        tickers = load_tickers_from_csv(file_name)
+        tickers = load_tickers_from_csv(file_name, category)
         print(f"✅ 成功載入 {len(tickers)} 隻標的代號")
         
         if not tickers:
             continue
 
-        # 批次下載 (每組 200 隻，確保網絡穩定性與突破 API 限制)
         chunk_size = 200
         for i in range(0, len(tickers), chunk_size):
             chunk = tickers[i:i + chunk_size]
             print(f"⏳ [{category}] 下載進度: {i+1} ~ {min(i+chunk_size, len(tickers))} / {len(tickers)}...")
             
             try:
+                # 將 period 改為 "2y"，確保獲取超過 200 天的數據
                 data = yf.download(
                     chunk, 
-                    period="1y", 
+                    period="2y", 
                     interval="1d", 
                     group_by='ticker', 
                     progress=False, 
@@ -166,14 +159,12 @@ def process_universe():
     for cat, group in df_all.groupby('Category'):
         group = group.copy()
         
-        # 轉換為類別內的百分位排名 (0 - 100)
         r_ema200 = group['p_ema200'].rank(pct=True) * 100
         r_roc125 = group['roc125'].rank(pct=True) * 100
         r_ema50  = group['p_ema50'].rank(pct=True) * 100
         r_roc20  = group['roc20'].rank(pct=True) * 100
         r_rsi14  = group['rsi14'].rank(pct=True) * 100
         
-        # 按照標準權重合成 SCTR 分數
         group['SCTR'] = (
             r_ema200 * 0.30 +
             r_roc125 * 0.30 +
@@ -187,7 +178,6 @@ def process_universe():
     df_final = pd.concat(final_dfs, ignore_index=True)
     df_final = df_final.sort_values(by=['Category', 'SCTR'], ascending=[True, False])
     
-    # 輸出終極檔案 SCTR_Master.csv
     output_file = "SCTR_Master.csv"
     df_final.to_csv(output_file, index=False)
     print(f"🎉【終極全宇宙 SCTR 運算完成】共 {len(df_final)} 隻資產排名成功！已覆蓋並寫入【{output_file}】！")
