@@ -8,13 +8,13 @@ def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) ->
     df = df.sort_index().copy()
     
     # ==========================================
-    # 🛡️ 爺爺特製：幽靈 K 線過濾器 (防 Yahoo Finance 深夜時差 Bug)
-    # 解決 1398, 1288 喺半夜突然跌出雷達嘅問題！
+    # 🛡️ 爺爺特製：終極暴力幽靈 K 線過濾器
+    # 徹底清除 Yahoo Finance 深夜 0 成交量嘅假 K 線 (救回 1398, 1288)
     # ==========================================
-    if len(df) > 1:
-        # 如果最後一條 K 線成交量小於 100 股，或者收市價係 NaN，直接斬走佢！
-        if df['Volume'].iloc[-1] < 100 or pd.isna(df['Close'].iloc[-1]):
-            df = df.iloc[:-1].copy()
+    df = df[(df['Volume'] > 0) & (df['Close'].notna())].copy()
+    
+    if len(df) == 0:
+        return df # 防止完全冇數據時報錯
             
     df.ffill(inplace=True)
     df.bfill(inplace=True)
@@ -363,7 +363,6 @@ def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) ->
     
     # 🎯 檢查是否啟用軌道 B (特權強制掃出)
     if get_bool(IS_SCTR_PRIVILEGE):
-        # 依照你的要求，將顯示文字精準改為「非合乎飛仙」
         tags_str = "（非合乎飛仙） | " + tags_str if tags_str else "（非合乎飛仙）"
 
     # ==========================================
@@ -377,7 +376,6 @@ def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) ->
     
     dragon_level = np.where(IS_TRUE_DRAGON, 2, np.where(IS_TRUE_EMPEROR, 1, 0))
     
-    # 🌟 爺爺終極確認：這裡已經保證可以食到剛剛強制填充好的 FINAL_SCTR_RANK
     df['SCTR_Rank'] = FINAL_SCTR_RANK.fillna(0.0).round(1)
     
     df['SCTR_Raw_4_0'] = SCTR_RAW_4_0.fillna(0).round(1)
