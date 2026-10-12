@@ -1,4 +1,3 @@
-cat << 'EOF' > Update_SCTR_Master.py
 import os
 import sys
 import pandas as pd
@@ -8,7 +7,7 @@ from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
 
-# 🎯 自動搜尋本地多個可能的 CSV 名單檔名 (優先使用全宇宙大名單)
+# 🎯 自動搜尋本地多個可能的 CSV 名展檔名 (優先使用全宇宙大名單)
 CANDIDATE_FILES = {
     "HK_Equities": ["HK_Equities_All.csv", "hk_stock.csv", "HK_Equities.csv"],
     "HK_ETFs": ["HK_ETFs_All.csv", "hk_etf.csv", "HK_ETFs.csv"],
@@ -168,12 +167,52 @@ def process_universe():
         
     df_final = pd.concat(final_dfs, ignore_index=True)
     df_final['Ticker'] = df_final['Ticker'].astype(str)
+
+    # -------------------------------------------------------------
+    # 🛡️ 1. 美股自動救援機制 (若網絡逾時導致美股缺失，自動讀取備份)
+    # -------------------------------------------------------------
+    has_us = df_final['Category'].str.startswith('US', na=False).any()
+    if not has_us and os.path.exists("SCTR_Master.csv"):
+        print("⚠️ 檢測到本次未計算出美股數據，正在從現有 SCTR_Master.csv 讀取美股備份...")
+        try:
+            old_master = pd.read_csv("SCTR_Master.csv", dtype=str)
+            old_us = old_master[old_master['Category'].str.startswith('US', na=False)]
+            if not old_us.empty:
+                df_final = pd.concat([df_final, old_us], ignore_index=True)
+                print(f"✅ 成功救援並補回美股數據 {len(old_us)} 筆！")
+        except Exception as e:
+            print(f"⚠️ 讀取舊版美股備份失敗: {e}")
+
+    # -------------------------------------------------------------
+    # 🇭🇰 2. 港股搜尋格式多重擴充 (支援 1288, 01288, 1288.HK 等多格式相容)
+    # -------------------------------------------------------------
+    rows = []
+    for _, row in df_final.iterrows():
+        d = row.to_dict()
+        t = str(d['Ticker']).strip()
+        cat = str(d.get('Category', '')).upper()
+        rows.append(d)
+        
+        digits = ''.join(filter(str.isdigit, t))
+        if digits and ('HK' in cat or 'HK' in t.upper()):
+            d1 = d.copy(); d1['Ticker'] = str(int(digits)); rows.append(d1)
+            d2 = d.copy(); d2['Ticker'] = digits.zfill(5); rows.append(d2)
+            d3 = d.copy(); d3['Ticker'] = digits.zfill(4); rows.append(d3)
+
+    df_final = pd.DataFrame(rows).drop_duplicates(subset=['Ticker', 'Category'])
     df_final = df_final.sort_values(by=['Category', 'SCTR'], ascending=[True, False])
-    
+
+    # -------------------------------------------------------------
+    # 🔒 3. 10,000 筆終極安全防護鎖 (筆數過少拒絕存檔)
+    # -------------------------------------------------------------
+    total_count = len(df_final)
+    if total_count < 10000:
+        print(f"❌ 終極安全防護啟動：計算結果僅 {total_count} 筆 (< 10,000)，疑似數據缺失！拒絕覆蓋存檔以保護資料庫。")
+        return
+
     output_file = "SCTR_Master.csv"
     df_final.to_csv(output_file, index=False)
-    print(f"\n🎉【終極全宇宙 SCTR 運算完成】共成功寫入 {len(df_final)} 隻股票至【{output_file}】！")
+    print(f"\n🎉【終極全宇宙 SCTR 運算完成】共成功寫入 {total_count} 隻股票至【{output_file}】！")
 
 if __name__ == "__main__":
     process_universe()
-EOF
