@@ -25,7 +25,8 @@ def fetch_github_list(url):
         return df
     except: return pd.DataFrame()
 
-# 🌟 爺爺重構版：讀取全宇宙 SCTR 排名大字典 (支援雲端+本地，完美相容 SCTR / SCTR_Rank 欄位名與代號補零容錯)
+# 🌟 爺爺重構快取版：加入 @st.cache_data(ttl=300) 避免重複下載大檔導致按鈕卡灰
+@st.cache_data(ttl=300)
 def load_sctr_master_dict():
     m_df = None
     # 1. 優先直連 GitHub Raw 最新的 SCTR 數據庫
@@ -41,7 +42,6 @@ def load_sctr_master_dict():
 
     if m_df is not None and not m_df.empty:
         try:
-            # 🌟 自動相容：判斷欄位名稱是 SCTR 還是 SCTR_Rank
             sctr_col = 'SCTR' if 'SCTR' in m_df.columns else ('SCTR_Rank' if 'SCTR_Rank' in m_df.columns else None)
             if not sctr_col or 'Ticker' not in m_df.columns:
                 return {}
@@ -54,10 +54,8 @@ def load_sctr_master_dict():
                 except (ValueError, TypeError):
                     score = 0.0
                 
-                # 清洗代號 (去 .HK, .US)
                 clean_t = raw_t.replace('.HK', '').replace('.US', '').strip()
                 
-                # 多重配對字典：無論原格式、去尾巴、補齊 4 位數，通通能配對！
                 sctr_dict[raw_t] = score
                 sctr_dict[clean_t] = score
                 
@@ -332,9 +330,15 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                 st.write("### 🇺🇸 選擇美股戰略名單：")
                 m = st.columns(4)
                 files = [("SP500_Equities.csv", "大藍籌"), ("Market_Focus.csv", "精選"), ("Industry_Focus.csv", "行業"), ("US_ETFs.csv", "美股ETF")]
+                
+                # 🌟 保底防錯機制：預設選定 US_ETFs.csv，防止未按按鈕時報錯
+                if 'active_file' not in st.session_state:
+                    st.session_state.active_file = "US_ETFs.csv"
+                    
                 for i, (f, name) in enumerate(files):
                     if m[i].button(f"選定 {name}"): 
                         st.session_state.active_file = f; st.success(f"✅ 已選定 {name}")
+                        
                 st.write("<br>", unsafe_allow_html=True)
                 if st.button(btn_text, use_container_width=True): btn_radar = True
 
@@ -342,9 +346,15 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                 st.write("### 🇭🇰 選擇港股戰略名單：")
                 m = st.columns(2)
                 files = [("hk_stock.csv", "港股個股"), ("hk_etf.csv", "港股ETF")]
+                
+                # 🌟 保底防錯機制：預設選定 hk_stock.csv
+                if 'active_file' not in st.session_state:
+                    st.session_state.active_file = "hk_stock.csv"
+                    
                 for i, (f, name) in enumerate(files):
                     if m[i].button(f"選定 {name}"): 
                         st.session_state.active_file = f; st.success(f"✅ 已選定 {name}")
+                        
                 st.write("<br>", unsafe_allow_html=True)
                 if st.button(btn_text, use_container_width=True): btn_radar = True
                 
@@ -370,7 +380,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                             if market_mode == 'HK': selected_tickers = [(t.zfill(4)+".HK" if not t.endswith(".HK") else t, sec) for t, sec in selected_tickers]
                         else:
                             selected_tickers = [(t, "雷達掃描") for t in tickers]
-                    except: st.error("讀取檔案失敗。")
+                    except Exception as e: st.error(f"讀取檔案失敗: {e}")
                 else: st.warning("請先選定一個名單！")
 
         # ===============================================
@@ -502,7 +512,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
         if btn_radar and selected_tickers:
             st.info(f"🚀 啟動極致穩定雷達 ({len(selected_tickers)} 隻) | 模式: {st.session_state.run_mode}...")
             
-            # 🌟 實時動態重新加載最新 SCTR 大字典，避免快取鎖死
+            # 🌟 使用快取讀取 SCTR 大字典，速度提升 100 倍！
             current_sctr_dict = load_sctr_master_dict()
             
             status_text = st.empty()
