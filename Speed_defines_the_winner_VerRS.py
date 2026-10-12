@@ -7,6 +7,15 @@ def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0) ->
     """
     df = df.sort_index().copy()
     
+    # ==========================================
+    # 🛡️ 爺爺特製：幽靈 K 線過濾器 (防 Yahoo Finance 深夜時差 Bug)
+    # 解決 1398, 1288 喺半夜突然跌出雷達嘅問題！
+    # ==========================================
+    if len(df) > 1:
+        # 如果最後一條 K 線成交量小於 100 股，或者收市價係 NaN，直接斬走佢！
+        if df['Volume'].iloc[-1] < 100 or pd.isna(df['Close'].iloc[-1]):
+            df = df.iloc[:-1].copy()
+            
     df.ffill(inplace=True)
     df.bfill(inplace=True)
     
