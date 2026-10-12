@@ -8,6 +8,7 @@ from core_logic import scan_dragon_logic, smart_fetch, check_stop_loss
 import time
 import os
 import json
+import re
 from Speed_defines_the_winner import run_tianwai_feixian
 from Speed_defines_the_winner_VerRS import run_tianwai_feixian as run_tianwai_feixian_rs
 
@@ -17,6 +18,17 @@ HK_STOCK_CSV_URL = "https://raw.githubusercontent.com/fukyanchiang/my-cosmos-vis
 HK_ETF_CSV_URL = "https://raw.githubusercontent.com/fukyanchiang/my-cosmos-vision/refs/heads/main/hk_etf.csv"
 RAW_SCTR_MASTER_URL = "https://raw.githubusercontent.com/fukyanchiang/my-cosmos-vision/main/SCTR_Master.csv"
 
+# 🌟 爺爺特製：萬能代碼正規化引擎 (統一清洗所有 .HK / 前導 0 / 空格)
+def normalize_ticker(sym):
+    if not sym or pd.isna(sym): return ""
+    s = str(sym).upper().strip()
+    # 剝離後綴
+    base = s.replace('.HK', '').replace('.US', '')
+    # 如果係純數字 (港股)，一律補齊 5 位數 (例如 "1398" -> "01398")
+    if base.isdigit():
+        return base.zfill(5)
+    return base
+
 @st.cache_data(ttl=3600)
 def fetch_github_list(url):
     try:
@@ -25,7 +37,7 @@ def fetch_github_list(url):
         return df
     except: return pd.DataFrame()
 
-# 🌟 爺爺萬能無死角字典重構版：對齊 4位/5位補零、.HK 後綴所有組合
+# 🌟 爺爺重構版：SCTR 數據庫生成
 @st.cache_data(ttl=60)
 def load_sctr_master_dict():
     m_df = None
@@ -36,41 +48,26 @@ def load_sctr_master_dict():
             try:
                 m_df = pd.read_csv("SCTR_Master.csv")
             except Exception:
-                m_df = None
+                pass
 
+    sctr_dict = {}
     if m_df is not None and not m_df.empty:
         try:
             sctr_col = 'SCTR' if 'SCTR' in m_df.columns else ('SCTR_Rank' if 'SCTR_Rank' in m_df.columns else None)
-            if not sctr_col or 'Ticker' not in m_df.columns:
-                return {}
-            
-            sctr_dict = {}
-            for _, row in m_df.iterrows():
-                raw_t = str(row['Ticker']).strip()
-                try:
-                    score = float(row[sctr_col])
-                except (ValueError, TypeError):
-                    score = 0.0
-                
-                clean_t = raw_t.replace('.HK', '').replace('.US', '').strip()
-                
-                sctr_dict[raw_t] = score
-                sctr_dict[clean_t] = score
-                
-                # 🌟 強效消除前導 0 並同時注入 4 位與 5 位數的各種 Key 組合
-                if clean_t.isdigit():
-                    num = int(clean_t)
-                    sctr_dict[str(num)] = score                          # '1398'
-                    sctr_dict[f"{num:04d}"] = score                      # '1398'
-                    sctr_dict[f"{num:05d}"] = score                      # '01398'
-                    sctr_dict[f"{num}.HK"] = score                       # '1398.HK'
-                    sctr_dict[f"{num:04d}.HK"] = score                   # '1398.HK'
-                    sctr_dict[f"{num:05d}.HK"] = score                   # '01398.HK'
+            if sctr_col and 'Ticker' in m_df.columns:
+                for _, row in m_df.iterrows():
+                    # 用正規化引擎清洗 Dict Key
+                    norm_t = normalize_ticker(row['Ticker'])
+                    try:
+                        score = float(row[sctr_col])
+                    except (ValueError, TypeError):
+                        score = 0.0
                     
-            return sctr_dict
+                    if norm_t:
+                        sctr_dict[norm_t] = score
         except Exception:
             pass
-    return {}
+    return sctr_dict
 
 sctr_master_dict = load_sctr_master_dict()
 
@@ -138,7 +135,6 @@ def run_hardpenny_logic(df: pd.DataFrame, symbol: str, sector: str) -> dict:
         'Icons': '',
         'IsDead': False
     }
-
 
 US_STOCK_MAP = {
     "1. 半導體設備與設計": "NVDA TSM AVGO ASML AMD QCOM TXN MU INTC AMAT LRCX KLAC ADI NXPI MRVL MCHP SWKS MPWR ON LSCC TER QRVO SLAB WOLF SYNA RMBS ALGM SITM ACLS CRUS".split(),
@@ -221,8 +217,17 @@ with st.sidebar:
             "💰 大戶資金流透視 (福德金字塔)"
         ]
     )
+    
+    # 🌟 爺爺的 DEBUG 監控面板
     st.markdown("---")
-    st.caption("👴 爺爺的操盤矩陣 V188.15 (鮮橙動能視覺優化版)")
+    st.markdown("### 🛠️ 爺爺 DEBUG 站")
+    if not sctr_master_dict:
+        st.error("⚠️ SCTR 數據庫未成功載入 (0 筆)！請檢查 GitHub 連結或 CSV 內容！")
+    else:
+        st.success(f"✅ SCTR 數據庫載入成功 ({len(sctr_master_dict)} 筆)")
+        
+    st.markdown("---")
+    st.caption("👴 爺爺的操盤矩陣 V188.16 (萬能 SCTR 正規化修復版)")
 
 if operation_mode == "🐉 龍魂神殿雷達系統":
     MEMORY_FILE = "dragon_memory.json"
@@ -536,25 +541,13 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                         if st.session_state.run_mode in ['TIANWAI', 'TIANWAI_RS']:
                             is_rs_mode = (st.session_state.run_mode == 'TIANWAI_RS')
                             
-                            # 🌟 萬能無死角匹配：逐級嘗試所有 Key 組合，確保 1398, 1288 100% 命中！
-                            raw_t_str = str(t).strip()
-                            clean_t = raw_t_str.replace(".HK", "").replace(".US", "").strip()
+                            # 🌟 爺爺特製：萬能正規化單一查找
+                            norm_t = normalize_ticker(t)
+                            t_rank = current_sctr_dict.get(norm_t, 0.0)
                             
-                            t_rank = 0.0
-                            if clean_t.isdigit():
-                                num = int(clean_t)
-                                t_rank = (
-                                    current_sctr_dict.get(raw_t_str) or
-                                    current_sctr_dict.get(clean_t) or
-                                    current_sctr_dict.get(f"{num:05d}.HK") or
-                                    current_sctr_dict.get(f"{num:04d}.HK") or
-                                    current_sctr_dict.get(f"{num:05d}") or
-                                    current_sctr_dict.get(f"{num:04d}") or
-                                    current_sctr_dict.get(str(num)) or
-                                    0.0
-                                )
-                            else:
-                                t_rank = current_sctr_dict.get(raw_t_str, current_sctr_dict.get(clean_t, 0.0))
+                            # 顯示頭 5 個股票嘅比對 Trace Log
+                            if i < 5:
+                                st.sidebar.write(f"🔍 DEBUG [{i+1}]: 原`{t}` -> 洗`{norm_t}` -> SCTR: {t_rank}")
                             
                             if is_rs_mode: res_df = run_tianwai_feixian_rs(df, sctr_rank_from_master=t_rank)
                             else: res_df = run_tianwai_feixian(df)
