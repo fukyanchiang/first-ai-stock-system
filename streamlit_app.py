@@ -15,6 +15,7 @@ st.set_page_config(page_title="龍魂神殿 5.0", layout="wide")
 
 HK_STOCK_CSV_URL = "https://raw.githubusercontent.com/fukyanchiang/my-cosmos-vision/refs/heads/main/hk_stock.csv"
 HK_ETF_CSV_URL = "https://raw.githubusercontent.com/fukyanchiang/my-cosmos-vision/refs/heads/main/hk_etf.csv"
+RAW_SCTR_MASTER_URL = "https://raw.githubusercontent.com/fukyanchiang/my-cosmos-vision/main/SCTR_Master.csv"
 
 @st.cache_data(ttl=3600)
 def fetch_github_list(url):
@@ -24,14 +25,49 @@ def fetch_github_list(url):
         return df
     except: return pd.DataFrame()
 
-# 讀取後台計好的全宇宙 SCTR 排名大字典 (即時讀取，不加 cache 防舊數據殘留)
+# 🌟 爺爺重構版：讀取全宇宙 SCTR 排名大字典 (支援雲端+本地，完美相容 SCTR / SCTR_Rank 欄位名與代號補零容錯)
 def load_sctr_master_dict():
-    if os.path.exists("SCTR_Master.csv"):
+    m_df = None
+    # 1. 優先直連 GitHub Raw 最新的 SCTR 數據庫
+    try:
+        m_df = pd.read_csv(RAW_SCTR_MASTER_URL)
+    except Exception:
+        # 2. 若網絡異常，備份讀取本地 SCTR_Master.csv
+        if os.path.exists("SCTR_Master.csv"):
+            try:
+                m_df = pd.read_csv("SCTR_Master.csv")
+            except Exception:
+                m_df = None
+
+    if m_df is not None and not m_df.empty:
         try:
-            m_df = pd.read_csv("SCTR_Master.csv")
-            m_df['Ticker'] = m_df['Ticker'].astype(str).str.strip()
-            return dict(zip(m_df['Ticker'], m_df['SCTR_Rank']))
-        except Exception as e:
+            # 🌟 自動相容：判斷欄位名稱是 SCTR 還是 SCTR_Rank
+            sctr_col = 'SCTR' if 'SCTR' in m_df.columns else ('SCTR_Rank' if 'SCTR_Rank' in m_df.columns else None)
+            if not sctr_col or 'Ticker' not in m_df.columns:
+                return {}
+            
+            sctr_dict = {}
+            for _, row in m_df.iterrows():
+                raw_t = str(row['Ticker']).strip()
+                try:
+                    score = float(row[sctr_col])
+                except (ValueError, TypeError):
+                    score = 0.0
+                
+                # 清洗代號 (去 .HK, .US)
+                clean_t = raw_t.replace('.HK', '').replace('.US', '').strip()
+                
+                # 多重配對字典：無論原格式、去尾巴、補齊 4 位數，通通能配對！
+                sctr_dict[raw_t] = score
+                sctr_dict[clean_t] = score
+                
+                if clean_t.isdigit():
+                    sctr_dict[clean_t.zfill(4)] = score
+                    sctr_dict[str(int(clean_t))] = score
+                    sctr_dict[clean_t.zfill(4) + ".HK"] = score
+                    
+            return sctr_dict
+        except Exception:
             pass
     return {}
 
@@ -466,7 +502,7 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
         if btn_radar and selected_tickers:
             st.info(f"🚀 啟動極致穩定雷達 ({len(selected_tickers)} 隻) | 模式: {st.session_state.run_mode}...")
             
-            # 即時重新讀取最新 SCTR 大字典，確保唔會讀到舊快取
+            # 🌟 實時動態重新加載最新 SCTR 大字典，避免快取鎖死
             current_sctr_dict = load_sctr_master_dict()
             
             status_text = st.empty()
@@ -490,9 +526,16 @@ if operation_mode == "🐉 龍魂神殿雷達系統":
                         if st.session_state.run_mode in ['TIANWAI', 'TIANWAI_RS']:
                             is_rs_mode = (st.session_state.run_mode == 'TIANWAI_RS')
                             
-                            # 讀取後台計好嘅 SCTR 排名字典 (方案二)
-                            clean_t = str(t).replace(".HK", "").strip()
-                            t_rank = current_sctr_dict.get(str(t).strip(), current_sctr_dict.get(clean_t, 0.0))
+                            # 🌟 雙向相容比對：先試原代號、再試去尾巴代號、再試 4 位補零代號
+                            raw_t_str = str(t).strip()
+                            clean_t = raw_t_str.replace(".HK", "").replace(".US", "").strip()
+                            t_rank = current_sctr_dict.get(
+                                raw_t_str, 
+                                current_sctr_dict.get(
+                                    clean_t, 
+                                    current_sctr_dict.get(clean_t.zfill(4), 0.0)
+                                )
+                            )
                             
                             if is_rs_mode: res_df = run_tianwai_feixian_rs(df, sctr_rank_from_master=t_rank)
                             else: res_df = run_tianwai_feixian(df)
