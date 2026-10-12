@@ -1,3 +1,4 @@
+cat << 'EOF' > Update_SCTR_Master.py
 import os
 import sys
 import pandas as pd
@@ -5,40 +6,59 @@ import numpy as np
 import yfinance as yf
 from datetime import datetime
 import warnings
-warnings.filterwarnings('ignore') # 隱藏 yfinance 警告
+warnings.filterwarnings('ignore')
 
-CSV_FILES = {
-    "HK_Equities": "HK_Equities_All.csv",
-    "HK_ETFs": "HK_ETFs_All.csv",
-    "US_Equities": "US_Equities_All.csv",
-    "US_ETFs": "US_ETFs_All.csv"
+# 🎯 自動搜尋本地多個可能的 CSV 名單檔名 (優先使用全宇宙大名單)
+CANDIDATE_FILES = {
+    "HK_Equities": ["HK_Equities_All.csv", "hk_stock.csv", "HK_Equities.csv"],
+    "HK_ETFs": ["HK_ETFs_All.csv", "hk_etf.csv", "HK_ETFs.csv"],
+    "US_Equities": ["US_Equities_All.csv", "SP500_Equities.csv", "US_Equities.csv"],
+    "US_ETFs": ["US_ETFs_All.csv", "US_ETFs.csv"]
 }
 
-def load_tickers_from_csv(file_path, category):
-    if not os.path.exists(file_path):
-        print(f"⚠️ 找不到檔案: {file_path}")
+def load_tickers_for_category(category):
+    files = CANDIDATE_FILES.get(category, [])
+    target_file = None
+    for f in files:
+        if os.path.exists(f):
+            target_file = f
+            break
+            
+    if not target_file:
+        print(f"⚠️ 找不到 [{category}] 的本地 CSV 檔案 (已嘗試: {files})")
         return {}
+
+    print(f"📂 載入 [{category}] 檔案: {target_file}")
     try:
-        # 強制用字串讀取，防止 1919 變成 1919.0
-        df = pd.read_csv(file_path, dtype=str)
+        df = pd.read_csv(target_file, dtype=str)
         possible_cols = ['Ticker', 'Symbol', 'Code', 'stock_code', 'ticker', 'symbol', 'code']
         found_col = next((col for col in df.columns if col.strip().lower() in [c.lower() for c in possible_cols]), df.columns[0])
         
-        tickers = df[found_col].dropna().astype(str).str.strip()
-        tickers = tickers.apply(lambda x: x.replace('.0', '') if x.endswith('.0') else x)
+        raw_tickers = df[found_col].dropna().astype(str).str.strip().tolist()
         
         ticker_map = {}
-        for t in tickers:
-            dl_ticker = t
+        for t in raw_tickers:
+            t_clean = t.replace('.0', '').strip()
+            if not t_clean:
+                continue
+                
+            dl_ticker = t_clean
+            save_ticker = t_clean
+            
             if "HK" in category:
-                if t.isdigit():
-                    dl_ticker = f"{t.zfill(4)}.HK" # 下載用 1919.HK
-                elif not t.endswith('.HK'):
-                    dl_ticker = f"{t}.HK"
-            ticker_map[dl_ticker] = t # 記住原本係 1919
+                digits = ''.join(filter(str.isdigit, t_clean))
+                if digits:
+                    save_ticker = str(int(digits)) # 寫入純數字如 1919
+                    dl_ticker = f"{digits.zfill(4)}.HK" # 下載用 1919.HK
+                elif not t_clean.endswith('.HK'):
+                    dl_ticker = f"{t_clean}.HK"
+                    save_ticker = t_clean.replace('.HK', '')
+            
+            ticker_map[dl_ticker] = save_ticker
+            
         return ticker_map
     except Exception as e:
-        print(f"❌ 讀取 {file_path} 失敗: {e}")
+        print(f"❌ 讀取 {target_file} 失敗: {e}")
         return {}
 
 def calculate_sctr_components(df):
@@ -71,11 +91,10 @@ def process_universe():
     print("🚀 啟動全宇宙資產 SCTR 主更新引擎...")
     all_results = []
     
-    for category, file_name in CSV_FILES.items():
-        print(f"\n📂 讀取類別 [{category}] <- 檔案: {file_name}...")
-        ticker_map = load_tickers_from_csv(file_name, category)
+    for category in CANDIDATE_FILES.keys():
+        ticker_map = load_tickers_for_category(category)
         dl_tickers = list(ticker_map.keys())
-        print(f"✅ 成功載入 {len(dl_tickers)} 隻標的代號")
+        print(f"✅ 成功載入 [{category}] 共 {len(dl_tickers)} 隻標的")
         
         if not dl_tickers:
             continue
@@ -88,7 +107,7 @@ def process_universe():
             try:
                 data = yf.download(chunk, period="2y", interval="1d", group_by='ticker', progress=False, threads=True)
                 for dl_ticker in chunk:
-                    original_ticker = ticker_map[dl_ticker] # 找回 1919
+                    save_ticker = ticker_map[dl_ticker]
                     try:
                         if len(chunk) == 1:
                             df_t = data.copy()
@@ -108,7 +127,7 @@ def process_universe():
                         metrics = calculate_sctr_components(clean_df)
                         if metrics:
                             all_results.append({
-                                'Ticker': original_ticker, # 寫入沒有 .HK 嘅代號畀 App 讀！
+                                'Ticker': save_ticker,
                                 'Category': category,
                                 'Close': metrics['Close'],
                                 'p_ema200': metrics['p_ema200'],
@@ -127,7 +146,7 @@ def process_universe():
         return
 
     df_all = pd.DataFrame(all_results)
-    print("🧮 正在計算 0 - 99.9 百分位 SCTR 綜合動能得分...")
+    print("\n🧮 正在計算 0 - 99.9 百分位 SCTR 綜合動能得分...")
     
     final_dfs = []
     for cat, group in df_all.groupby('Category'):
@@ -148,12 +167,13 @@ def process_universe():
         final_dfs.append(group)
         
     df_final = pd.concat(final_dfs, ignore_index=True)
-    df_final['Ticker'] = df_final['Ticker'].astype(str) # 確保代號係字串
+    df_final['Ticker'] = df_final['Ticker'].astype(str)
     df_final = df_final.sort_values(by=['Category', 'SCTR'], ascending=[True, False])
     
     output_file = "SCTR_Master.csv"
     df_final.to_csv(output_file, index=False)
-    print(f"🎉【終極全宇宙 SCTR 運算完成】已覆蓋並寫入【{output_file}】！")
+    print(f"\n🎉【終極全宇宙 SCTR 運算完成】共成功寫入 {len(df_final)} 隻股票至【{output_file}】！")
 
 if __name__ == "__main__":
     process_universe()
+EOF
