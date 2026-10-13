@@ -49,10 +49,8 @@ def load_tickers_for_category(category):
                 if digits:
                     save_ticker = str(int(digits)) # 寫入純數字如 1919
                     
-                    # 🛠️ Yahoo 4位數字終極防呆轉換 (解決 06198 變 404 問題)
-                    # 邏輯：先轉成 int 砍掉前面的 0，再用 zfill(4) 補齊 4 位數，最後加上 .HK
+                    # 🛠️ Yahoo 4 位數字終極防呆轉換 (解決 06198 變 404 問題)
                     dl_ticker = f"{str(int(digits)).zfill(4)}.HK"
-                    
                 elif not t_clean.endswith('.HK'):
                     dl_ticker = f"{t_clean}.HK"
                     save_ticker = t_clean.replace('.HK', '')
@@ -64,10 +62,22 @@ def load_tickers_for_category(category):
         print(f"❌ 讀取 {target_file} 失敗: {e}")
         return {}
 
-def calculate_sctr_components(df):
-    if len(df) < 200:
+def calculate_sctr(df):
+    if df is None or len(df) < 200:
         return None
+        
+    if 'Close' not in df:
+        return None
+        
+    # 🛡️ 核心防禦：展平多維度 Close 結構，根治 cannot convert series to float
     close = df['Close']
+    if isinstance(close, pd.DataFrame):
+        close = close.iloc[:, 0]
+    close = pd.Series(close).dropna()
+    
+    if len(close) < 200:
+        return None
+
     ema200 = close.ewm(span=200, adjust=False).mean()
     p_ema200 = ((close.iloc[-1] - ema200.iloc[-1]) / ema200.iloc[-1]) * 100
     roc125 = ((close.iloc[-1] - close.iloc[-125]) / close.iloc[-125]) * 100
@@ -82,13 +92,16 @@ def calculate_sctr_components(df):
     rsi_val = rsi14.iloc[-1]
     
     return {
-        'Close': float(close.iloc[-1]),
-        'p_ema200': float(p_ema200),
-        'roc125': float(roc125),
-        'p_ema50': float(p_ema50),
-        'roc20': float(roc20),
-        'rsi14': float(rsi_val)
+        'Close': float(np.ravel(close)[-1]),
+        'p_ema200': float(np.ravel(p_ema200)[-1]),
+        'roc125': float(np.ravel(roc125)[-1]),
+        'p_ema50': float(np.ravel(p_ema50)[-1]),
+        'roc20': float(np.ravel(roc20)[-1]),
+        'rsi14': float(np.ravel(rsi_val)[-1])
     }
+
+# 雙向相容別名
+calculate_sctr_components = calculate_sctr
 
 def process_universe():
     print("🚀 啟動全宇宙資產 SCTR 主更新引擎...")
@@ -127,7 +140,7 @@ def process_universe():
                         if len(clean_df) < 200:
                             continue
                             
-                        metrics = calculate_sctr_components(clean_df)
+                        metrics = calculate_sctr(clean_df)
                         if metrics:
                             all_results.append({
                                 'Ticker': save_ticker,
@@ -219,7 +232,6 @@ def process_universe():
     if old_master is not None and not old_master.empty and 'SCTR' in old_master.columns:
         print("🔍 正在比對昨日 SCTR 分數，檢測動能跌穿 90 標的...")
         try:
-            # 建立 (Ticker, Category) -> SCTR 字典
             old_dict = {}
             for _, r in old_master.dropna(subset=['Ticker', 'SCTR']).iterrows():
                 k = (str(r['Ticker']).strip(), str(r.get('Category', '')).strip())
@@ -228,15 +240,11 @@ def process_universe():
                 except:
                     pass
             
-            # 對齊昨日分數
             df_final['SCTR_Prev'] = df_final.apply(
                 lambda r: old_dict.get((str(r['Ticker']).strip(), str(r.get('Category', '')).strip()), np.nan),
                 axis=1
             )
-            # 計算今日變動值 (今日 - 昨日)
             df_final['SCTR_Change'] = (df_final['SCTR'] - df_final['SCTR_Prev']).round(2)
-            
-            # 判定是否由 90 以上跌穿 90 (昨日 >= 90.0 且 今日 < 90.0)
             df_final['Cross_Down_90'] = (df_final['SCTR_Prev'] >= 90.0) & (df_final['SCTR'] < 90.0)
             
             drop_count = df_final[df_final['Cross_Down_90'] == True]['Ticker'].nunique()
