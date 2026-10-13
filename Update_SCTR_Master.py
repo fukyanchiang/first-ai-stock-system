@@ -7,7 +7,7 @@ from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
 
-# 🎯 自動搜尋本地多個可能的 CSV 名展檔名 (優先使用全宇宙大名單)
+# 🎯 自動搜尋本地多個可能的 CSV 名單檔名 (優先使用全宇宙大名單)
 CANDIDATE_FILES = {
     "HK_Equities": ["HK_Equities_All.csv", "hk_stock.csv", "HK_Equities.csv"],
     "HK_ETFs": ["HK_ETFs_All.csv", "hk_etf.csv", "HK_ETFs.csv"],
@@ -48,7 +48,11 @@ def load_tickers_for_category(category):
                 digits = ''.join(filter(str.isdigit, t_clean))
                 if digits:
                     save_ticker = str(int(digits)) # 寫入純數字如 1919
-                    dl_ticker = f"{digits.zfill(4)}.HK" # 下載用 1919.HK
+                    
+                    # 🛠️ Yahoo 4位數字終極防呆轉換 (解決 06198 變 404 問題)
+                    # 邏輯：先轉成 int 砍掉前面的 0，再用 zfill(4) 補齊 4 位數，最後加上 .HK
+                    dl_ticker = f"{str(int(digits)).zfill(4)}.HK"
+                    
                 elif not t_clean.endswith('.HK'):
                     dl_ticker = f"{t_clean}.HK"
                     save_ticker = t_clean.replace('.HK', '')
@@ -169,19 +173,25 @@ def process_universe():
     df_final['Ticker'] = df_final['Ticker'].astype(str)
 
     # -------------------------------------------------------------
+    # 🗄️ 讀取現有舊版 SCTR_Master.csv (同時供美股救援與昨日比對使用)
+    # -------------------------------------------------------------
+    old_master = None
+    if os.path.exists("SCTR_Master.csv"):
+        try:
+            old_master = pd.read_csv("SCTR_Master.csv", dtype=str)
+        except Exception as e:
+            print(f"⚠️ 讀取現有 SCTR_Master.csv 失敗: {e}")
+
+    # -------------------------------------------------------------
     # 🛡️ 1. 美股自動救援機制 (若網絡逾時導致美股缺失，自動讀取備份)
     # -------------------------------------------------------------
     has_us = df_final['Category'].str.startswith('US', na=False).any()
-    if not has_us and os.path.exists("SCTR_Master.csv"):
+    if not has_us and old_master is not None and not old_master.empty:
         print("⚠️ 檢測到本次未計算出美股數據，正在從現有 SCTR_Master.csv 讀取美股備份...")
-        try:
-            old_master = pd.read_csv("SCTR_Master.csv", dtype=str)
-            old_us = old_master[old_master['Category'].str.startswith('US', na=False)]
-            if not old_us.empty:
-                df_final = pd.concat([df_final, old_us], ignore_index=True)
-                print(f"✅ 成功救援並補回美股數據 {len(old_us)} 筆！")
-        except Exception as e:
-            print(f"⚠️ 讀取舊版美股備份失敗: {e}")
+        old_us = old_master[old_master['Category'].str.startswith('US', na=False)]
+        if not old_us.empty:
+            df_final = pd.concat([df_final, old_us], ignore_index=True)
+            print(f"✅ 成功救援並補回美股數據 {len(old_us)} 筆！")
 
     # -------------------------------------------------------------
     # 🇭🇰 2. 港股搜尋格式多重擴充 (支援 1288, 01288, 1288.HK 等多格式相容)
@@ -200,10 +210,49 @@ def process_universe():
             d3 = d.copy(); d3['Ticker'] = digits.zfill(4); rows.append(d3)
 
     df_final = pd.DataFrame(rows).drop_duplicates(subset=['Ticker', 'Category'])
+    df_final['SCTR'] = pd.to_numeric(df_final['SCTR'], errors='coerce')
     df_final = df_final.sort_values(by=['Category', 'SCTR'], ascending=[True, False])
 
     # -------------------------------------------------------------
-    # 🔒 3. 10,000 筆終極安全防護鎖 (筆數過少拒絕存檔)
+    # 📉 3. 昨日 SCTR 記憶與跌穿 90 偵測機制 (SCTR Breach-Down)
+    # -------------------------------------------------------------
+    if old_master is not None and not old_master.empty and 'SCTR' in old_master.columns:
+        print("🔍 正在比對昨日 SCTR 分數，檢測動能跌穿 90 標的...")
+        try:
+            # 建立 (Ticker, Category) -> SCTR 字典
+            old_dict = {}
+            for _, r in old_master.dropna(subset=['Ticker', 'SCTR']).iterrows():
+                k = (str(r['Ticker']).strip(), str(r.get('Category', '')).strip())
+                try:
+                    old_dict[k] = float(r['SCTR'])
+                except:
+                    pass
+            
+            # 對齊昨日分數
+            df_final['SCTR_Prev'] = df_final.apply(
+                lambda r: old_dict.get((str(r['Ticker']).strip(), str(r.get('Category', '')).strip()), np.nan),
+                axis=1
+            )
+            # 計算今日變動值 (今日 - 昨日)
+            df_final['SCTR_Change'] = (df_final['SCTR'] - df_final['SCTR_Prev']).round(2)
+            
+            # 判定是否由 90 以上跌穿 90 (昨日 >= 90.0 且 今日 < 90.0)
+            df_final['Cross_Down_90'] = (df_final['SCTR_Prev'] >= 90.0) & (df_final['SCTR'] < 90.0)
+            
+            drop_count = df_final[df_final['Cross_Down_90'] == True]['Ticker'].nunique()
+            print(f"🚨 比對完成！今日全市場共偵測到 {drop_count} 隻標的自 90 分高檔跌穿！")
+        except Exception as e:
+            print(f"⚠️ 比對昨日 SCTR 失敗: {e}")
+            df_final['SCTR_Prev'] = np.nan
+            df_final['SCTR_Change'] = np.nan
+            df_final['Cross_Down_90'] = False
+    else:
+        df_final['SCTR_Prev'] = np.nan
+        df_final['SCTR_Change'] = np.nan
+        df_final['Cross_Down_90'] = False
+
+    # -------------------------------------------------------------
+    # 🔒 4. 10,000 筆終極安全防護鎖 (筆數過少拒絕存檔)
     # -------------------------------------------------------------
     total_count = len(df_final)
     if total_count < 10000:
