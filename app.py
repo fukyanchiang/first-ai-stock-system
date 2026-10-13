@@ -9,6 +9,7 @@ if 'symbol' not in st.session_state:
 
 # 🚀【極簡直連咒語】：直接召喚所有分艙
 from page1 import render_stock_tab
+import page_1a  # 🎯 爺爺新增：匯入全新 1a 艙房 (天外飛仙)
 from page2 import render_options_tab
 from page_2a import render_breadth_tab          
 from page_2b import render_master_tower_tab     
@@ -38,10 +39,10 @@ import page_2u
 
 from page_2v import render as render_page_2v  
 from page_2w import app as render_page_2w   
-from page_2w_vwap import app as render_page_2w_vwap # 🎯 爺爺新增：匯入好淡分界線艙房 (2α)
+from page_2w_vwap import app as render_page_2w_vwap 
 from page_2x import app as render_page_2x   
 from page_2y import app as render_page_2y   
-import page_2z # 🎯 爺爺新增：匯入 2z 象形雷達艙房
+import page_2z 
 
 from page3 import render_macro_tab
 from page4 import render_page4  
@@ -100,9 +101,10 @@ st.markdown("<h1>🌐 大指揮官・全球資產與期權量化終端</h1>", un
 # =========================================================================
 st.sidebar.markdown("## 🧭 戰略艙房導航中心")
 
-# 🎯 集中定義導航選項字典：徹底解決 Emoji 與空格不一致導致無反應的問題
+# 🎯 集中定義導航選項字典
 NAV_OPTIONS = {
     "P1": "📊 艙房一：六維王者矩陣 (股票)",
+    "P1A": "🛸 艙房 1a：天外飛仙 (RS 強勢爆發)", # 🎯 爺爺新增：完美安插在 P1 與 P2 之間
     "P2": "🔥 艙房二：期權多維雷達 (Options)",
     "P2A": "📊 艙房 2a：全球市場市寬大面板",
     "P2B": "🛡️ 艙房 2b：環球市底大師指揮塔",
@@ -129,7 +131,7 @@ NAV_OPTIONS = {
     "P2U": "🟡 艙房 2u：外國逆回購 (RPF)",
     "P2V": "⚖️ 艙房 2v : SPHB / SPLV Ratio (高低波幅比率)",
     "P2W": "🚨 艙房 2w : 四維市寬背馳雷達 (Divergence)", 
-    "P2ALPHA": "⚖️ 艙房 2α : 真・好淡分界線 (VWAP & POC)", # 🎯 爺爺新增：安插在 2w 與 2x 之間
+    "P2ALPHA": "⚖️ 艙房 2α : 真・好淡分界線 (VWAP & POC)",
     "P2X": "⚔️ 艙房 2x : 華爾街市寬雙核神兵 (MCO & ZBT)", 
     "P2Y": "🌌 艙房 2y : 全球資金同步與板塊星盤 (MISE)", 
     "P2Z": "👁️ 艙房 2z : AI 象形圖表與幾何諧波雷達", 
@@ -139,18 +141,13 @@ NAV_OPTIONS = {
     "P6": "🤖 艙房六：AI 馴服與絕對軍令中心"
 }
 
-# 保留單選掣 (radio)，配合頂部的 CSS 會自動變成雙排
-page_choice = st.sidebar.radio(
-    "請點擊切換進入艙房：",
-    list(NAV_OPTIONS.values())
-)
+page_choice = st.sidebar.radio("請點擊切換進入艙房：", list(NAV_OPTIONS.values()))
 st.sidebar.markdown("---")
 
-# --- 側邊控制面板 (保留原始輸入邏輯) ---
+# --- 側邊控制面板 ---
 st.sidebar.markdown("### 🛠️ 系統控制面板")
 market_type = st.sidebar.selectbox("選擇市場", ["美股", "港股", "日股", "韓股", "台股", "A股", "加密貨幣"])
 
-# ⚙ 將側邊欄選擇的市場與時間窗，全自動同步進 session_state 給 page_2bb 讀取
 st.session_state["global_market"] = f"{market_type}陣列"
 
 hints = {
@@ -165,7 +162,6 @@ if st.session_state.get('symbol') != symbol:
     st.session_state['symbol'] = symbol
 
 period = st.sidebar.selectbox("選擇股票 analysis 週期", ["1mo", "3mo", "6mo", "1y", "5y"], index=1)
-
 global_days = st.sidebar.selectbox("📡 拔河熱力圖戰術時間窗", [20, 5], index=0)
 st.session_state["global_days"] = global_days
 
@@ -182,6 +178,10 @@ if symbol:
             if page_choice == NAV_OPTIONS["P1"]:
                 try: render_stock_tab(df, period, market_type, symbol)
                 except Exception as e: st.error(f"⚠️ 艙房一系統不兼容: {e}")
+                
+            elif page_choice == NAV_OPTIONS["P1A"]:  # 🎯 爺爺新增：1a 艙房 Routing
+                try: page_1a.render_page_1a()
+                except Exception as e: st.error(f"⚠️ 艙房 1a 系統不兼容: {e}")
                 
             elif page_choice == NAV_OPTIONS["P2"]:
                 try:
@@ -261,7 +261,6 @@ if symbol:
                 try: render_page_2p()
                 except Exception as e: st.error(f"⚠️ 艙房 2p 系統不兼容: {e}")
 
-            # 🚨 美聯儲應急流動性 5 大艙房安全調度
             elif page_choice == NAV_OPTIONS["P2Q"]:
                 try: run_fed_module(page_2q)
                 except Exception as e: st.error(f"⚠️ 艙房 2q 系統不兼容: {e}")
@@ -290,7 +289,6 @@ if symbol:
                 try: render_page_2w()
                 except Exception as e: st.error(f"⚠️ 艙房 2w 系統不兼容: {e}")
 
-            # 🎯 爺爺手動注入：2α 艙房 Routing (真・好淡分界線)
             elif page_choice == NAV_OPTIONS["P2ALPHA"]:  
                 try: render_page_2w_vwap()
                 except Exception as e: st.error(f"⚠️ 艙房 2α 系統不兼容: {e}")
@@ -303,7 +301,6 @@ if symbol:
                 try: render_page_2y()
                 except Exception as e: st.error(f"⚠️ 艙房 2y 系統不兼容: {e}")
 
-            # 🎯 爺爺手動注入：2Z 艙房 Routing
             elif page_choice == NAV_OPTIONS["P2Z"]:  
                 try: page_2z.render_page_2z()
                 except Exception as e: st.error(f"⚠️ 艙房 2z 系統不兼容: {e}")
