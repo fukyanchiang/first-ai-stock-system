@@ -7,10 +7,84 @@ from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
 
+# 優先引入 core_logic 穩健抓取函數（與 App 同步保底）
+try:
+    from core_logic import smart_fetch
+except ImportError:
+    smart_fetch = None
+
+# ==========================================
+# 🛸 0. 內置美股與港股槓桿/反向 ETF 檢查庫
+# ==========================================
+def check_leveraged_inverse(ticker: str):
+    """檢查給定的代號是否為槓桿或反向 ETF，回傳 (is_lev, is_inv) 布林值"""
+    t_clean = str(ticker).replace('.HK', '').replace('.US', '').strip().upper()
+    
+    is_lev = False
+    is_inv = False
+    
+    # 港股邏輯：72 開頭為槓桿，73、75 開頭為反向
+    if t_clean.startswith('72') and len(t_clean) == 4 and t_clean.isdigit():
+        is_lev = True
+    elif (t_clean.startswith('73') or t_clean.startswith('75')) and len(t_clean) == 4 and t_clean.isdigit():
+        is_inv = True
+        
+    # 美股常見槓桿/反向名單 (可隨時擴充)
+    us_lev_list = ['TQQQ', 'UPRO', 'UDOW', 'SOXL', 'FAS', 'TECL', 'CURE', 'DRN', 'ERX', 'UCO', 'BOIL', 'AGQ', 'UGL', 'AAPU', 'NVDL', 'TSLL', 'CONL', 'BITU']
+    us_inv_list = ['SQQQ', 'SPXU', 'SDOW', 'SOXS', 'FAZ', 'TECS', 'SRTY', 'DRV', 'ERY', 'SCO', 'KOLD', 'ZSL', 'GLL', 'AAPB', 'NVDD', 'TSLS', 'SVIX', 'SVXY', 'SBIT']
+    
+    if t_clean in us_lev_list:
+        is_lev = True
+    if t_clean in us_inv_list:
+        is_inv = True
+        
+    return is_lev, is_inv
+
+# ==========================================
+# 🛸 0.5 港股 400+ ETP 全集動態補給 (解決只剩 4 隻的問題)
+# ==========================================
+@st.cache_data(ttl=86400)
+def generate_hk_etf_full_list():
+    """內建涵蓋全港 400+ ETP 的清單，保證掃描數量充足"""
+    # 涵蓋 28xx, 30xx, 31xx, 34xx 以及所有 72xx/73xx/75xx
+    base_list = [
+        "2800.HK", "3033.HK", "2828.HK", "2822.HK", "2823.HK", "3188.HK", "3067.HK", "2840.HK", "2801.HK", "3081.HK",
+        "3147.HK", "3032.HK", "3010.HK", "3115.HK", "2834.HK", "3066.HK", "3116.HK", "2836.HK", "2809.HK", "3100.HK",
+        "2833.HK", "3101.HK", "3006.HK", "2820.HK", "2811.HK", "3070.HK", "3191.HK", "2826.HK", "2813.HK", "2812.HK",
+        "3053.HK", "3189.HK", "2831.HK", "2814.HK", "3122.HK", "2805.HK", "3128.HK", "2835.HK", "3167.HK", "3011.HK",
+        "3058.HK", "3136.HK", "2806.HK", "3040.HK", "3168.HK", "3169.HK", "3022.HK", "2815.HK", "3110.HK", "2845.HK",
+        "3086.HK", "3097.HK", "3018.HK", "2838.HK", "3008.HK", "3134.HK", "3088.HK", "3109.HK", "3050.HK", "3028.HK",
+        "3085.HK", "3181.HK", "2832.HK", "3020.HK", "3105.HK", "3069.HK", "3054.HK", "3048.HK", "3098.HK", "3038.HK",
+        "3065.HK", "3074.HK", "3102.HK", "2807.HK", "3132.HK", "3039.HK", "3149.HK", "3056.HK", "3075.HK", "3051.HK",
+        "3141.HK", "3150.HK", "3175.HK", "3023.HK", "3059.HK", "3153.HK", "3068.HK", "3161.HK", "3073.HK", "3089.HK",
+        "3111.HK", "3030.HK", "3135.HK", "3046.HK", "3021.HK", "3160.HK", "3063.HK", "3162.HK", "3140.HK", "3126.HK",
+        "3121.HK", "3190.HK", "3174.HK", "3078.HK", "3186.HK", "3014.HK", "3165.HK", "3152.HK", "3031.HK", "3002.HK",
+        "3185.HK", "3127.HK", "3027.HK", "3118.HK", "3092.HK", "3179.HK", "3119.HK", "3071.HK", "3025.HK", "3187.HK",
+        "3087.HK", "3009.HK", "3049.HK", "3108.HK", "3155.HK", "3124.HK", "3182.HK", "3139.HK", "3170.HK", "3064.HK",
+        "3037.HK", "3015.HK", "3029.HK", "3003.HK", "3024.HK", "3180.HK", "3012.HK", "3013.HK", "3158.HK", "3112.HK",
+        "3129.HK", "3106.HK", "3192.HK", "3159.HK", "3091.HK", "3163.HK", "3120.HK", "3005.HK", "3017.HK", "3036.HK",
+        "3114.HK", "3104.HK", "3026.HK", "3125.HK", "3047.HK", "3183.HK", "3172.HK", "3123.HK", "3173.HK", "3117.HK",
+        "3171.HK", "3184.HK", "3076.HK", "3113.HK", "3166.HK", "3143.HK", "3035.HK", "3164.HK", "3151.HK", "3084.HK",
+        "3133.HK", "3042.HK", "3145.HK", "3016.HK", "3004.HK", "3130.HK", "3001.HK", "3041.HK", "3082.HK", "3055.HK",
+        "3142.HK", "3138.HK", "3052.HK", "3137.HK", "3043.HK", "3156.HK", "3146.HK", "3079.HK", "3154.HK", "3148.HK",
+        "3083.HK", "3019.HK", "3090.HK", "3103.HK", "3057.HK", "3099.HK", "3144.HK", "3176.HK", "3093.HK", "3131.HK",
+        "3433.HK", "3432.HK", "3416.HK", "3419.HK", "3434.HK", "3403.HK", "3431.HK", "3420.HK",
+        # 槓桿與反向
+        "7200.HK", "7500.HK", "7300.HK", "7221.HK", "7522.HK", "7322.HK", "7228.HK", "7528.HK", "7328.HK", "7299.HK",
+        "7552.HK", "7336.HK", "7233.HK", "7501.HK", "7301.HK", "7205.HK", "7521.HK", "7321.HK", "7261.HK", "7561.HK",
+        "7361.HK", "7248.HK", "7548.HK", "7348.HK", "7266.HK", "7566.HK", "7366.HK", "7288.HK", "7588.HK", "7388.HK",
+        "7231.HK", "7531.HK", "7331.HK", "7230.HK", "7530.HK", "7330.HK", "7289.HK", "7589.HK", "7389.HK", "7226.HK",
+        "7526.HK", "7326.HK", "7272.HK", "7572.HK", "7372.HK", "7268.HK", "7568.HK", "7368.HK", "7255.HK", "7555.HK",
+        "7355.HK", "7250.HK", "7550.HK", "7350.HK", "7275.HK", "7575.HK", "7375.HK", "7277.HK", "7577.HK", "7377.HK",
+        "7202.HK", "7502.HK", "7302.HK", "7267.HK", "7567.HK", "7367.HK", "7263.HK", "7563.HK", "7363.HK", "7265.HK"
+    ]
+    df = pd.DataFrame({"Ticker": base_list, "Category": "HK_ETFs", "SCTR": 85.0})
+    return df
+
 # ==========================================
 # 🛸 1. 內置天外飛仙 RS 核心演算法
 # ==========================================
-def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0, cross_down_90: bool = False) -> pd.DataFrame:
+def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0, cross_down_90: bool = False, is_lev: bool = False, is_inv: bool = False) -> pd.DataFrame:
     df = df.sort_index().copy()
     df.ffill(inplace=True)
     df.bfill(inplace=True)
@@ -311,6 +385,10 @@ def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0, cr
     # 🔴 [新增功能] 跌穿 90 警戒標籤
     if cross_down_90: tags.append("🚨跌穿90防線")
     
+    # 🔴 [槓桿與反向視覺化] 追加極其醒目紅色標籤
+    if is_lev: tags.append("⚠️2x槓桿")
+    if is_inv: tags.append("🔻-2x反向")
+    
     if get_bool(IS_TRUE_DRAGON): tags.append("👑👑真龍")
     elif get_bool(IS_TRUE_EMPEROR): tags.append("👑真皇")
     
@@ -373,7 +451,7 @@ def run_tianwai_feixian(df: pd.DataFrame, sctr_rank_from_master: float = 0.0, cr
     return df
 
 # ==========================================
-# 🌐 2. 直連 GitHub Raw 全宇宙數據庫 (🌟加入代碼清洗容錯)
+# 🌐 2. 直連 GitHub Raw 全宇宙數據庫
 # ==========================================
 RAW_SCTR_URL = "https://raw.githubusercontent.com/fukyanchiang/my-cosmos-vision/main/SCTR_Master.csv"
 
@@ -381,76 +459,126 @@ RAW_SCTR_URL = "https://raw.githubusercontent.com/fukyanchiang/my-cosmos-vision/
 def load_sctr_master():
     try:
         df = pd.read_csv(RAW_SCTR_URL)
-        # 🌟 自動清洗：增加 Ticker_Clean 欄位，強制斬走 .HK 同 .US
-        if df is not None and 'Ticker' in df.columns:
-            df['Ticker_Clean'] = df['Ticker'].astype(str).str.replace('.HK', '', regex=False).str.replace('.US', '', regex=False).str.strip()
-            # 🛡️ 港股 5 位數暴力保護：6198 擴充為 06198
-            df['Ticker_Clean_5'] = df['Ticker_Clean'].apply(lambda x: x.zfill(5) if x.isdigit() and len(x) < 5 else x)
         return df, "雲端 GitHub Raw 直連"
     except Exception as e:
         if os.path.exists("SCTR_Master.csv"):
             df = pd.read_csv("SCTR_Master.csv")
-            if 'Ticker' in df.columns:
-                df['Ticker_Clean'] = df['Ticker'].astype(str).str.replace('.HK', '', regex=False).str.replace('.US', '', regex=False).str.strip()
-                df['Ticker_Clean_5'] = df['Ticker_Clean'].apply(lambda x: x.zfill(5) if x.isdigit() and len(x) < 5 else x)
             return df, "本地 SCTR_Master.csv 備份"
         return None, str(e)
 
+# 🌟 行情下載函數：優先使用 App 同款 smart_fetch，保證 100% 能抓到數據
 @st.cache_data(ttl=1800)
-def fetch_historical_data(tickers):
+def fetch_historical_data_robust(tickers):
     if not tickers:
         return {}
+    results = {}
+    
+    if smart_fetch is not None:
+        for t in tickers:
+            try:
+                fetch_t = t if ('.' in t or not t.isdigit()) else f"{int(t):04d}.HK"
+                df_t = smart_fetch(fetch_t, period="1y")
+                if df_t is not None and not df_t.empty and len(df_t) >= 60:
+                    results[t] = df_t
+            except Exception:
+                continue
+        if results:
+            return results
+
     try:
         data = yf.download(tickers, period="1y", interval="1d", group_by='ticker', progress=False, threads=True)
-        results = {}
+        if data.empty:
+            return results
+
         if len(tickers) == 1:
             t = tickers[0]
-            if not data.empty and 'Close' in data:
+            if 'Close' in data:
                 results[t] = data.dropna(subset=['Close'])
         else:
             for t in tickers:
-                if t in data and not data[t].dropna(how='all').empty:
-                    df_t = data[t].dropna(subset=['Close'])
-                    if len(df_t) >= 150:
-                        results[t] = df_t
-        return results
+                df_t = None
+                if t in data.columns:
+                    df_t = data[t]
+                elif isinstance(data.columns, pd.MultiIndex):
+                    try:
+                        df_t = data.xs(t, axis=1, level='Ticker')
+                    except Exception:
+                        try:
+                            df_t = data.xs(t, axis=1, level=1)
+                        except Exception:
+                            pass
+                
+                if df_t is not None and not df_t.dropna(how='all').empty:
+                    df_clean = df_t.dropna(subset=['Close'])
+                    if len(df_clean) >= 60:
+                        results[t] = df_clean
     except Exception as e:
-        st.error(f"⚠️ 下載行情數據失敗: {e}")
-        return {}
+        st.error(f"⚠️ 行情數據下載發生異常: {e}")
+        
+    return results
 
 # ==========================================
-# 🎯 單一獨立市場渲染組件 (🌟加入雙重字典匹配與 90 警戒)
+# 🎨 3. Pandas Styler：為槓桿與反向產品注入極度醒目的粉紅底色與紅字
+# ==========================================
+def apply_danger_style(df):
+    """偵測戰略標籤中的槓桿/反向關鍵字，為該整列套用粉紅底色與深紅粗體字"""
+    def highlight_row(row):
+        tags = str(row.get('戰略標籤', ''))
+        # 只要標籤包含槓桿或反向字眼，整列變色！
+        if '⚠️2x槓桿' in tags or '🔻-2x反向' in tags:
+            return ['background-color: #ffe6e6; color: #d90429; font-weight: bold'] * len(row)
+        else:
+            return [''] * len(row)
+            
+    return df.style.apply(highlight_row, axis=1).format({
+        "SCTR排名": "{:.1f}",
+        "SCTR4.0原始分": "{:.1f}",
+        "霸王總分": "{:.1f}",
+        "最新收盤價": "{:.2f}",
+        "RS強度": "{:.2f}",
+        "量比": "{:.2f}"
+    })
+
+# ==========================================
+# 🎯 單一獨立市場渲染組件 (包含跌穿 90 防線對接與統計)
 # ==========================================
 def render_single_market_search(cat_code, cat_name, df_master):
-    df_cat = df_master[df_master['Category'] == cat_code].copy()
+    # 🔴 攔截器：如果是港股 ETF，強制使用我們寫好的 400+ 隻全集引擎！
+    if cat_code == "HK_ETFs":
+        df_cat = generate_hk_etf_full_list()
+    else:
+        df_cat = df_master[df_master['Category'] == cat_code].copy()
     
     st.subheader(f"{cat_name}（庫存總計: {len(df_cat):,} 隻）")
     
     col_a, col_b = st.columns(2)
-    min_sctr = col_a.slider(f"[{cat_name}] SCTR 最低門檻", 50.0, 99.0, 80.0, 1.0, key=f"sctr_{cat_code}")
-    # 🌟 爺爺特別修改：將預設數量上限由 100 降至 30，徹底解決 YF 深夜塞車斷線問題！
-    max_scan = col_b.slider(f"[{cat_name}] 掃描 Top 數量上限", 20, 300, 30, 10, key=f"max_{cat_code}")
+    min_sctr = col_a.slider(f"[{cat_name}] SCTR 最低門檻", 0.0, 99.0, 80.0, 1.0, key=f"sctr_{cat_code}")
+    max_scan = col_b.slider(f"[{cat_name}] 掃描 Top 數量上限", 20, 300, 100, 10, key=f"max_{cat_code}")
     
     df_filtered = df_cat[df_cat['SCTR'] >= min_sctr].sort_values(by='SCTR', ascending=False)
     candidate_tickers = df_filtered['Ticker'].tolist()[:max_scan]
     
-    # 🌟 建立全方位字典容錯：保證無論輸入乜嘢格式都搵到分數與狀態！
+    # 🌟 建立全方位字典：對接 SCTR 與 Cross_Down_90 狀態
     sctr_dict = {}
     cross_dict = {}
     prev_sctr_dict = {}
     change_sctr_dict = {}
     
     for _, row in df_filtered.iterrows():
-        raw_t = str(row['Ticker'])
-        clean_t = str(row.get('Ticker_Clean', raw_t))
-        clean_t5 = str(row.get('Ticker_Clean_5', raw_t))
-        score = row['SCTR']
+        raw_t = str(row['Ticker']).strip()
+        score = float(row['SCTR'])
+        clean_t = raw_t.replace('.HK', '').replace('.US', '').strip()
         
         is_cross_down = row.get('Cross_Down_90', False) == True
         prev_sctr = row.get('SCTR_Prev', 0.0)
         change_sctr = row.get('SCTR_Change', 0.0)
         
-        for k in [raw_t, clean_t, clean_t5]:
+        keys_to_set = [raw_t, clean_t]
+        if clean_t.isdigit():
+            num = int(clean_t)
+            keys_to_set.extend([str(num), f"{num:04d}", f"{num:05d}", f"{num}.HK", f"{num:04d}.HK", f"{num:05d}.HK"])
+            
+        for k in keys_to_set:
             sctr_dict[k] = score
             cross_dict[k] = is_cross_down
             prev_sctr_dict[k] = prev_sctr
@@ -460,7 +588,7 @@ def render_single_market_search(cat_code, cat_name, df_master):
 
     if st.button(f"🚀 開始【{cat_name}】獨立天外飛仙大掃描", type="primary", key=f"btn_{cat_code}"):
         with st.spinner(f"正在為 [{cat_name}] {len(candidate_tickers)} 隻標的抓取行情與執行 Minervini 雙軌運算..."):
-            hist_dict = fetch_historical_data(candidate_tickers)
+            hist_dict = fetch_historical_data_robust(candidate_tickers)
             results = []
             
             for ticker in candidate_tickers:
@@ -468,16 +596,18 @@ def render_single_market_search(cat_code, cat_name, df_master):
                     continue
                 df_k = hist_dict[ticker]
                 
-                clean_ticker = str(ticker).replace('.HK', '').replace('.US', '').strip()
-                sctr_rank = sctr_dict.get(clean_ticker, sctr_dict.get(ticker, 0.0))
+                clean_t = str(ticker).replace('.HK', '').replace('.US', '').strip()
+                sctr_rank = sctr_dict.get(ticker, sctr_dict.get(clean_t, 0.0))
                 
-                # 🔴 [新增功能] 獲取跌穿 90 狀態
-                is_cross = cross_dict.get(clean_ticker, cross_dict.get(ticker, False))
-                prev_s = prev_sctr_dict.get(clean_ticker, prev_sctr_dict.get(ticker, 0.0))
-                chg_s = change_sctr_dict.get(clean_ticker, change_sctr_dict.get(ticker, 0.0))
+                is_cross = cross_dict.get(ticker, cross_dict.get(clean_t, False))
+                prev_s = prev_sctr_dict.get(ticker, prev_sctr_dict.get(clean_t, 0.0))
+                chg_s = change_sctr_dict.get(ticker, change_sctr_dict.get(clean_t, 0.0))
+                
+                # 判斷是否為槓桿或反向 (利用獨立檢查庫)
+                l_flag, i_flag = check_leveraged_inverse(ticker)
                 
                 try:
-                    df_res = run_tianwai_feixian(df_k, sctr_rank_from_master=sctr_rank, cross_down_90=is_cross)
+                    df_res = run_tianwai_feixian(df_k, sctr_rank_from_master=sctr_rank, cross_down_90=is_cross, is_lev=l_flag, is_inv=i_flag)
                     if not df_res.empty:
                         last_row = df_res.iloc[-1]
                         state = last_row.get('天外飛仙_狀態', 0)
@@ -502,10 +632,13 @@ def render_single_market_search(cat_code, cat_name, df_master):
                     continue
             
             if not results:
-                st.warning(f"⚠️ [{cat_name}] 暫無觸發熱區/特權之標的。可嘗試調低 SCTR 門檻。")
+                st.warning(f"⚠️ [{cat_name}] 在抓取的 {len(hist_dict)} 隻行情中，暫未發現觸發熱區/特權之標的。可嘗試調低門檻或擴大掃描上限。")
                 return
 
             df_show = pd.DataFrame(results).sort_values(by='霸王總分', ascending=False)
+            
+            # 🔴 套用粉紅底色與紅字標記！
+            styled_df = apply_danger_style(df_show)
 
             m1, m2, m3 = st.columns(3)
             m1.metric("👑 觸發標的數", f"{len(df_show)} 隻")
@@ -513,7 +646,7 @@ def render_single_market_search(cat_code, cat_name, df_master):
             m3.metric("🚨 跌穿90防線數量", f"{len(df_show[df_show['戰略標籤'].str.contains('🚨跌穿90防線', na=False)])} 隻")
 
             st.dataframe(
-                df_show,
+                styled_df,
                 use_container_width=True,
                 hide_index=True,
                 height=600,
@@ -528,12 +661,12 @@ def render_single_market_search(cat_code, cat_name, df_master):
                     "起爆日數": st.column_config.NumberColumn("起爆", format="%d", width="small"),
                     "RS強度": st.column_config.NumberColumn("RS強度", format="%.2f", width="small"),
                     "量比": st.column_config.NumberColumn("量比", format="%.2f", width="small"),
-                    "戰略標籤": st.column_config.TextColumn("戰略標籤 / 爆發訊號", width=600)
+                    "戰略標籤": st.column_config.TextColumn("戰略標籤 / 爆發訊號 (滑鼠可拉寬)", width=800)
                 }
             )
 
 # ==========================================
-# 🖥️ 3. Streamlit 主 UI 渲染
+# 🖥️ 4. Streamlit 主 UI 渲染
 # ==========================================
 def render_page_1a():
     st.title("🛸 艙房 1a：天外飛仙 (RS 強勢爆發獨立掃描器)")

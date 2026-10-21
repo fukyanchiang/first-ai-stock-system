@@ -183,13 +183,14 @@ def render_page_2e():
         ), row=3, col=1)
 
         # ==========================================
-        # 🎨 圖表排版與美化
+        # 🎨 圖表排版與美化 (🌟 爺爺修正了字體顏色)
         # ==========================================
         fig.update_layout(
             title=dict(text=f"🎯 {target_index} 多維度動能掃描 (全陣列 {count_map[target_index]} 隻)", font=dict(color='white', size=22)),
             template="plotly_dark", height=850, margin=dict(l=50, r=60, t=60, b=20),
             xaxis_rangeslider_visible=False, showlegend=True, barmode='relative',
-            legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="right", x=1),
+            font=dict(color="white"), # 🌟 強制全域字體變白
+            legend=dict(orientation="h", yanchor="bottom", y=1.01, xanchor="right", x=1, font=dict(color="white")), # 🌟 強制圖例變白
             paper_bgcolor="#1e212b", plot_bgcolor="#1e212b"
         )
         

@@ -9,7 +9,14 @@ if 'symbol' not in st.session_state:
 
 # 🚀【極簡直連咒語】：直接召喚所有分艙
 from page1 import render_stock_tab
-import page_1a  # 🎯 爺爺新增：匯入全新 1a 艙房 (天外飛仙)
+
+# 🎯 載入全新獨立江恩太極艙房 (安全防護模式)
+try:
+    import page1gann
+except ImportError:
+    page1gann = None
+
+import page_1a  
 from page2 import render_options_tab
 from page_2a import render_breadth_tab          
 from page_2b import render_master_tower_tab     
@@ -20,6 +27,7 @@ from page_2e import render_page_2e
 from page_2e_hk import render_page_2e_hk  
 from page_2f import render_page_2f  
 from page_2g import render_page_2g  
+from page_2g_2 import render_page_2g_2  # 🎯 聯儲局議息監控
 from page_2h import render_page_2h  
 from page_2i import render_page_2i  
 from page_2j import render_page_2j  
@@ -30,7 +38,6 @@ from page_2n import render_page_2n
 from page_2o import render_page_2o  
 from page_2p import render_page_2p  
 
-# 🚨 爺爺萬能防爆注入：匯入整隻模組，避開函數名稱對不上的 ImportError
 import page_2q
 import page_2r
 import page_2s
@@ -69,27 +76,56 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 🧙‍♂️ 爺爺的 CSS 黑客魔法：強行將側邊欄 Radio 變成「先直後橫」雙排佈局
+# 🧙‍♂️ 爺爺還原自由身：解開寬度鎖定，開出完美 3 直欄 + 自動擴展側邊欄
 st.markdown("""
 <style>
-    /* 鎖定側邊欄入面嘅單選掣群組，轉為 Column 雙直行佈局 */
-    [data-testid="stSidebar"] [role="radiogroup"] {
-        column-count: 2 !important;  /* 分割成兩直行 */
-        column-gap: 10px !important; /* 左右間距 */
-        display: block !important;   /* 取消之前的 Grid 佈局 */
+    /* 1. 恢復自由拖拉：左右完全解除限制，讓你無限向左向右拉！ */
+    section[data-testid="stSidebar"] {
+        min-width: unset !important;
+        max-width: none !important;
     }
-    /* 防止單個選項跨欄斷開，並設定上下間距 */
-    [data-testid="stSidebar"] [role="radiogroup"] > label {
+
+    /* 2. 側邊欄 Radio 變為 3 直行排版 (Grid 佈局) */
+    section[data-testid="stSidebar"] div[data-testid="stRadio"] > div[role="radiogroup"] {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 8px 6px !important;
+    }
+
+    /* 3. 項目緊湊垂直排列，圓圈貼齊第一行頂部 */
+    section[data-testid="stSidebar"] div[data-testid="stRadio"] > div[role="radiogroup"] > label {
         break-inside: avoid !important;
-        margin-bottom: 8px !important; 
+        margin-bottom: 0px !important; 
         display: flex !important;
+        align-items: flex-start !important; 
+        width: 100% !important;
+        background: transparent !important; 
+        border: none !important;
+        padding: 4px 2px !important;
     }
-    /* 稍微縮細字體，防止字數太長逼爆格，同時隱藏超出範圍的文字並加上省略號 */
-    [data-testid="stSidebar"] [role="radiogroup"] span {
-        font-size: 13px !important;
-        white-space: nowrap; 
-        overflow: hidden;
-        text-overflow: ellipsis;
+
+    /* 4. 左邊圓圈保持小巧尺寸，不被文字擠壓 */
+    section[data-testid="stSidebar"] div[data-testid="stRadio"] > div[role="radiogroup"] > label > div:first-child {
+        flex-shrink: 0 !important;
+        margin-top: 2px !important;
+        margin-right: 4px !important;
+    }
+
+    /* 5. 彈性寬度容器 */
+    section[data-testid="stSidebar"] div[data-testid="stRadio"] > div[role="radiogroup"] > label > div[data-testid="stMarkdownContainer"] {
+        flex: 1 1 auto !important;
+        width: auto !important;
+        min-width: 0 !important;
+    }
+
+    /* 6. 極致緊湊字體：適合 3 欄的窄長文字折行 */
+    section[data-testid="stSidebar"] div[data-testid="stRadio"] p {
+        font-size: 11.5px !important;
+        white-space: normal !important;      
+        word-break: break-word !important;   
+        line-height: 1.3 !important;
+        color: var(--text-color) !important;
+        margin: 0 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -97,14 +133,15 @@ st.markdown("""
 st.markdown("<h1>🌐 大指揮官・全球資產與期權量化終端</h1>", unsafe_allow_html=True)
 
 # =========================================================================
-# 🎮 👑 核心框架改造：左側鋼鐵戰略側邊欄
+# 🎮 核心框架改造：左側鋼鐵戰略側邊欄
 # =========================================================================
 st.sidebar.markdown("## 🧭 戰略艙房導航中心")
 
 # 🎯 集中定義導航選項字典
 NAV_OPTIONS = {
     "P1": "📊 艙房一：六維王者矩陣 (股票)",
-    "P1A": "🛸 艙房 1a：天外飛仙 (RS 強勢爆發)", # 🎯 爺爺新增：完美安插在 P1 與 P2 之間
+    "P1_GANN": "📊 艙房一_江恩：太極時空幾何",  # ⭐ 緊隨艙房一正下方
+    "P1A": "🛸 艙房 1a：天外飛仙 (RS 強勢爆發)",
     "P2": "🔥 艙房二：期權多維雷達 (Options)",
     "P2A": "📊 艙房 2a：全球市場市寬大面板",
     "P2B": "🛡️ 艙房 2b：環球市底大師指揮塔",
@@ -115,6 +152,7 @@ NAV_OPTIONS = {
     "P2E_HK": "🧩 艙房 2e-HK：港股原版真實市寬",
     "P2F": "🧩 艙房 2f：債市恐慌 MOVE 終極拆解",
     "P2G": "🧩 艙房 2g：FRED (BofA 高收益債利差) + HYG",
+    "P2G_2": "🏦 艙房 2g-2：聯儲局議息監控 (FedWatch)", 
     "P2H": "🧩 艙房 2h：銅期貨 HG=F / 金期貨 GC=F 或 COPX/GLD",
     "P2I": "☢️ 艙房 2i：SEC Form 4 / 國會巨鯨內幕",
     "P2J": "🧲 艙房 2j：期權全量鏈 (yfinance) / 暗池 DIX",
@@ -176,150 +214,137 @@ if symbol:
             st.error("❌ 找不到該資產的數據，請檢查代號格式是否正確！")
         else:
             if page_choice == NAV_OPTIONS["P1"]:
-                try: render_stock_tab(df, period, market_type, symbol)
-                except Exception as e: st.error(f"⚠️ 艙房一系統不兼容: {e}")
+                render_stock_tab(df, period, market_type, symbol)
+
+            elif page_choice == NAV_OPTIONS["P1_GANN"]:
+                # 🎯 執行全新艙房一_江恩：太極時空幾何
+                if page1gann is not None:
+                    # 自動相容各種常見渲染入口名稱
+                    if hasattr(page1gann, "render_gann_taichi_tab"):
+                        page1gann.render_gann_taichi_tab(df, period, market_type, symbol)
+                    elif hasattr(page1gann, "render_page"):
+                        page1gann.render_page(df, period, market_type, symbol)
+                    elif hasattr(page1gann, "main"):
+                        page1gann.main(df, period, market_type, symbol)
+                    else:
+                        st.warning("⚠️ `page1gann.py` 尚未定義渲染函數 (例如 render_gann_taichi_tab)。")
+                else:
+                    st.info("🛠️ `page1gann.py` 正在準備中，請確認已放置於專案根目錄。")
                 
-            elif page_choice == NAV_OPTIONS["P1A"]:  # 🎯 爺爺新增：1a 艙房 Routing
-                try: page_1a.render_page_1a()
-                except Exception as e: st.error(f"⚠️ 艙房 1a 系統不兼容: {e}")
+            elif page_choice == NAV_OPTIONS["P1A"]:  
+                if page_1a is not None:
+                    page_1a.render_page_1a()
+                else:
+                    st.error("⚠️ 模組 page_1a 載入失敗或遺失。")
                 
             elif page_choice == NAV_OPTIONS["P2"]:
-                try:
-                    df_clean_for_opt = df.dropna(subset=['Close']).copy()
-                    render_options_tab(ticker, market_type, symbol, df_clean_for_opt)
-                except Exception as e: st.error(f"⚠ 艙房二系統不兼容: {e}")
+                df_clean_for_opt = df.dropna(subset=['Close']).copy()
+                render_options_tab(ticker, market_type, symbol, df_clean_for_opt)
                 
             elif page_choice == NAV_OPTIONS["P2A"]:
-                try: render_breadth_tab()
-                except Exception as e: st.error(f"⚠ 艙房 2a 系統不兼容: {e}")
+                render_breadth_tab()
                 
             elif page_choice == NAV_OPTIONS["P2B"]:
-                try: render_master_tower_tab()
-                except Exception as e: st.error(f"⚠️ 艙房 2b 系統不兼容: {e}")
+                render_master_tower_tab()
                 
             elif page_choice == NAV_OPTIONS["P2C"]:
-                try: render_sentiment_macro_tab()
-                except Exception as e: st.error(f"⚠️ 艙房 2c 系統不兼容: {e}")
+                render_sentiment_macro_tab()
                 
             elif page_choice == NAV_OPTIONS["P2BB"]:
-                try: render_page_2bb()
-                except Exception as e: st.error(f"⚠️ 艙房 2bb 系統不兼容: {e}")
+                render_page_2bb()
                 
             elif page_choice == NAV_OPTIONS["P2BB_HK"]: 
-                try: render_page_2bb_hk()
-                except Exception as e: st.error(f"⚠️ 港股艙房 2bb-HK 系統不兼容: {e}")
+                render_page_2bb_hk()
                 
             elif page_choice == NAV_OPTIONS["P2E"]:  
-                try: render_page_2e()
-                except Exception as e: st.error(f"⚠️ 艙房 2e 系統不兼容: {e}")
+                render_page_2e()
 
             elif page_choice == NAV_OPTIONS["P2E_HK"]:  
-                try: render_page_2e_hk()
-                except Exception as e: st.error(f"⚠️ 艙房 2e-HK 系統不兼容: {e}")
+                render_page_2e_hk()
                 
             elif page_choice == NAV_OPTIONS["P2F"]:
-                try: render_page_2f()
-                except Exception as e: st.error(f"⚠️ 艙房 2f 系統不兼容: {e}")
+                render_page_2f()
 
             elif page_choice == NAV_OPTIONS["P2G"]:
-                try: render_page_2g()
-                except Exception as e: st.error(f"⚠️ 艙房 2g 系統不兼容: {e}")
+                render_page_2g()
+
+            elif page_choice == NAV_OPTIONS["P2G_2"]:  
+                render_page_2g_2()
                 
             elif page_choice == NAV_OPTIONS["P2H"]:  
-                try: render_page_2h()
-                except Exception as e: st.error(f"⚠️ 艙房 2h 系統不兼容: {e}")
+                render_page_2h()
                 
             elif page_choice == NAV_OPTIONS["P2I"]:  
-                try: render_page_2i()
-                except Exception as e: st.error(f"⚠️ 艙房 2i 系統不兼容: {e}")
+                render_page_2i()
                 
             elif page_choice == NAV_OPTIONS["P2J"]:  
-                try: render_page_2j()
-                except Exception as e: st.error(f"⚠️ 艙房 2j 系統不兼容: {e}")
+                render_page_2j()
                 
             elif page_choice == NAV_OPTIONS["P2K"]:  
-                try: render_page_2k()
-                except Exception as e: st.error(f"⚠️ 艙房 2k 系統不兼容: {e}")
+                render_page_2k()
                 
             elif page_choice == NAV_OPTIONS["P2L"]:  
-                try: render_page_2l()
-                except Exception as e: st.error(f"⚠ 艙房 2L 系統不兼容: {e}")
+                render_page_2l()
                 
             elif page_choice == NAV_OPTIONS["P2M"]:  
-                try: render_page_2m()
-                except Exception as e: st.error(f"⚠️ 艙房 2m 系統不兼容: {e}")
+                render_page_2m()
                 
             elif page_choice == NAV_OPTIONS["P2N"]:  
-                try: render_page_2n()
-                except Exception as e: st.error(f"⚠️ 艙房 2n 系統不兼容: {e}")
+                render_page_2n()
                 
             elif page_choice == NAV_OPTIONS["P2O"]:  
-                try: render_page_2o()
-                except Exception as e: st.error(f"⚠️ 艙房 2o 系統不兼容: {e}")
+                render_page_2o()
 
             elif page_choice == NAV_OPTIONS["P2P"]:  
-                try: render_page_2p()
-                except Exception as e: st.error(f"⚠️ 艙房 2p 系統不兼容: {e}")
+                render_page_2p()
 
             elif page_choice == NAV_OPTIONS["P2Q"]:
-                try: run_fed_module(page_2q)
-                except Exception as e: st.error(f"⚠️ 艙房 2q 系統不兼容: {e}")
+                run_fed_module(page_2q)
 
             elif page_choice == NAV_OPTIONS["P2R"]:
-                try: run_fed_module(page_2r)
-                except Exception as e: st.error(f"⚠️ 艙房 2r 系統不兼容: {e}")
+                run_fed_module(page_2r)
 
             elif page_choice == NAV_OPTIONS["P2S"]:
-                try: run_fed_module(page_2s)
-                except Exception as e: st.error(f"⚠️ 艙房 2s 系統不兼容: {e}")
+                run_fed_module(page_2s)
 
             elif page_choice == NAV_OPTIONS["P2T"]:
-                try: run_fed_module(page_2t)
-                except Exception as e: st.error(f"⚠️ 艙房 2t 系統不兼容: {e}")
+                run_fed_module(page_2t)
 
             elif page_choice == NAV_OPTIONS["P2U"]:
-                try: run_fed_module(page_2u)
-                except Exception as e: st.error(f"⚠️ 艙房 2u 系統不兼容: {e}")
+                run_fed_module(page_2u)
                 
             elif page_choice == NAV_OPTIONS["P2V"]:  
-                try: render_page_2v()
-                except Exception as e: st.error(f"⚠️ 艙房 2v 系統不兼容: {e}")
+                render_page_2v()
                 
             elif page_choice == NAV_OPTIONS["P2W"]:  
-                try: render_page_2w()
-                except Exception as e: st.error(f"⚠️ 艙房 2w 系統不兼容: {e}")
+                render_page_2w()
 
             elif page_choice == NAV_OPTIONS["P2ALPHA"]:  
-                try: render_page_2w_vwap()
-                except Exception as e: st.error(f"⚠️ 艙房 2α 系統不兼容: {e}")
+                render_page_2w_vwap()
 
             elif page_choice == NAV_OPTIONS["P2X"]:  
-                try: render_page_2x()
-                except Exception as e: st.error(f"⚠️ 艙房 2x 系統不兼容: {e}")
+                render_page_2x()
 
             elif page_choice == NAV_OPTIONS["P2Y"]:  
-                try: render_page_2y()
-                except Exception as e: st.error(f"⚠️ 艙房 2y 系統不兼容: {e}")
+                render_page_2y()
 
             elif page_choice == NAV_OPTIONS["P2Z"]:  
-                try: page_2z.render_page_2z()
-                except Exception as e: st.error(f"⚠️ 艙房 2z 系統不兼容: {e}")
+                if page_2z is not None:
+                    page_2z.render_page_2z()
+                else:
+                    st.error("⚠️ 模組 page_2z 載入失敗或遺失。")
                 
             elif page_choice == NAV_OPTIONS["P3"]:
-                try: render_macro_tab()
-                except Exception as e: st.error(f"⚠ 艙房三系統不兼容: {e}")
+                render_macro_tab()
                 
             elif page_choice == NAV_OPTIONS["P4"]:
-                try: render_page4()
-                except Exception as e: st.error(f"⚠️ 艙房四系統不兼容: {e}")
+                render_page4()
                 
             elif page_choice == NAV_OPTIONS["P5"]:
-                try: render_page5()
-                except Exception as e: st.error(f"⚠️ 艙房五系統不兼容: {e}")
+                render_page5()
                 
             elif page_choice == NAV_OPTIONS["P6"]:
-                try: render_prompt_generator()
-                except Exception as e: st.error(f"⚠ 艙房六系統不兼容: {e}")
+                render_prompt_generator()
                 
     except Exception as e: 
         st.error(f"⚠️ 系統抓取數據時發生錯誤: {str(e)}")

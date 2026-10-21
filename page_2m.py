@@ -5,7 +5,7 @@ import yfinance as yf
 import plotly.graph_objects as go
 
 # =========================================================================
-# 🏛️ 1. 完整板塊資料庫定義 (已全面升級 23 大前沿陣列)
+# 🏛️ 1. 完整板塊資料庫定義 (11 大傳統宏觀 + 23 大前沿硬科技 = 34 大板塊)
 # =========================================================================
 
 MACRO_SECTORS = {
@@ -15,7 +15,55 @@ MACRO_SECTORS = {
     'XLRE': '房地產 (XLRE)', 'XLC': '通訊服務 (XLC)'
 }
 
-# 🚀 爺爺終極升級：補齊所有關聯 ETF (加入最新的 DRAM ETF 等) 及核心個股名單
+# 🏛️ 11 大傳統宏觀板塊之核心成分股與代表 ETF 資料庫
+MACRO_SECTOR_HOLDINGS = {
+    '科技 (XLK)': {
+        'etfs': ['XLK', 'VGT', 'IYW', 'QQQ'],
+        'tickers': ['AAPL', 'MSFT', 'NVDA', 'AVGO', 'ORCL', 'CRM', 'ADBE', 'CSCO', 'AMD', 'QCOM']
+    },
+    '金融 (XLF)': {
+        'etfs': ['XLF', 'VFH', 'KBE', 'KRE'],
+        'tickers': ['JPM', 'BAC', 'WFC', 'GS', 'MS', 'BLK', 'C', 'AXP', 'V', 'MA']
+    },
+    '醫療保健 (XLV)': {
+        'etfs': ['XLV', 'VHT', 'IBB', 'XBI'],
+        'tickers': ['LLY', 'UNH', 'JNJ', 'ABBV', 'MRK', 'TMO', 'ABT', 'PFE', 'AMGN', 'ISRG']
+    },
+    '能源 (XLE)': {
+        'etfs': ['XLE', 'VDE', 'OIH', 'XOP'],
+        'tickers': ['XOM', 'CVX', 'COP', 'EOG', 'SLB', 'MPC', 'PSX', 'VLO', 'OXY', 'HAL']
+    },
+    '非必需消費 (XLY)': {
+        'etfs': ['XLY', 'VCR', 'XRT'],
+        'tickers': ['AMZN', 'TSLA', 'HD', 'MCD', 'NKE', 'LOW', 'BKNG', 'SBUX', 'TJX', 'TGT']
+    },
+    '必需消費 (XLP)': {
+        'etfs': ['XLP', 'VDC', 'KXI'],
+        'tickers': ['PG', 'COST', 'WMT', 'KO', 'PEP', 'PM', 'MDLZ', 'CL', 'MO', 'KMB']
+    },
+    '工業 (XLI)': {
+        'etfs': ['XLI', 'VIS', 'ITA'],
+        'tickers': ['GE', 'CAT', 'UNP', 'HON', 'RTX', 'BA', 'LMT', 'DE', 'UPS', 'FDX']
+    },
+    '公用事業 (XLU)': {
+        'etfs': ['XLU', 'VPU', 'GRID'],
+        'tickers': ['NEE', 'SO', 'DUK', 'CEG', 'VST', 'SRE', 'AEP', 'PEG', 'EXC', 'ED']
+    },
+    '原材料 (XLB)': {
+        'etfs': ['XLB', 'VAW', 'LIT'],
+        'tickers': ['LIN', 'SHW', 'FCX', 'APD', 'ECL', 'NEM', 'CTVA', 'DOW', 'DD', 'ALB']
+    },
+    '房地產 (XLRE)': {
+        'etfs': ['XLRE', 'VNQ', 'IYR'],
+        'tickers': ['PLD', 'AMT', 'EQIX', 'WELL', 'SPG', 'PSA', 'O', 'DLR', 'CCI', 'VICI']
+    },
+    '通訊服務 (XLC)': {
+        'etfs': ['XLC', 'VOX', 'FCOM'],
+        'tickers': ['META', 'GOOGL', 'GOOG', 'NFLX', 'DIS', 'CMCSA', 'TMUS', 'VZ', 'T', 'EA']
+    }
+}
+
+# 🚀 23 大前沿硬科技、主題與資源霸權
 FRONTIER_SECTORS = {
     '🧠 GPU / AI 核心算力 (SMH)': {'etfs': ['SMH', 'SOXX', 'USD'], 'tickers': ['NVDA', 'TSM', 'AVGO', 'AMD', 'ASML', 'ARM', 'MU', 'QCOM']},
     '💻 CPU / 處理器 (SOXX)': {'etfs': ['SOXX', 'XSD'], 'tickers': ['AMD', 'INTC', 'ARM', 'QCOM', 'AAPL', 'NVDA', 'TXN']},
@@ -42,6 +90,9 @@ FRONTIER_SECTORS = {
     '🚀 顛覆性創新 (木頭姐)': {'etfs': ['ARKK', 'ARKW', 'ARKG', 'ARKF', 'ARKX'], 'tickers': ['TSLA', 'ROKU', 'COIN', 'PLTR', 'U']}
 }
 
+# 🌐 全球 34 大完整板塊成分資料庫 (11 宏觀 + 23 前沿)
+ALL_34_SECTOR_HOLDINGS = {**MACRO_SECTOR_HOLDINGS, **FRONTIER_SECTORS}
+
 ULTIMATE_SECTORS = {
     '📈 股市總體風險 (SPY)': 'SPY',
     '🗑️ 聰明錢信用風險 (HYG)': 'HYG',
@@ -63,7 +114,7 @@ def load_all_market_data():
     all_tickers.update(MACRO_SECTORS.keys())
     all_tickers.update(ULTIMATE_SECTORS.values())
     
-    # 提取所有 ETF 和 個股
+    # 提取所有前沿 ETF 和個股
     for sec, info in FRONTIER_SECTORS.items():
         if 'etfs' in info:
             for etf in info['etfs']:
@@ -343,20 +394,28 @@ def render_page_2m():
     st.markdown("* 💀 **終極泡沫爆破 (End-Game)**：SMH 同 URA 一齊由右邊急轉彎，向左下角紅色落後區直插 ➔ AI 敘事全面破滅，資金湧入美債 (TLT) 避險。呢個就係爺爺講嘅「清屏核按鈕」！")
     
     # =========================================================================
-    # 🗄️ 5. 新增：23 大前沿板塊成分股資料庫 (Holdings Database)
+    # 🗄️ 5. 全球 34 大完整板塊成分股資料庫 (Holdings Database)
     # =========================================================================
     st.markdown("---")
     
-    with st.expander("🗄️ 點擊展開：23 大前沿板塊成分股資料庫 (Holdings Database)", expanded=False):
-        st.markdown("### 🔍 查詢板塊核心成分股")
-        st.markdown("想知道邊隻 ETF 或者邊個板塊包含咩股票？喺度一撳就知！ *(系統已自動將以下所有 ETF 與個股匯總，並等權重計算出專屬嘅前沿板塊指數)*")
+    with st.expander("🗄️ 點擊展開：全球 34 大完整板塊成分股資料庫 (Holdings Database)", expanded=False):
+        st.markdown("### 🔍 查詢板塊核心成分股與代表 ETF")
+        st.markdown("想知道邊隻 ETF 或者邊個板塊包含咩股票？喺度一撳就知！ *(已全面涵蓋 11 大傳統宏觀 GICS 板塊 ＋ 23 大前沿硬科技與主題霸權，共 34 大板塊)*")
         
-        sector_names = list(FRONTIER_SECTORS.keys())
-        selected_sector = st.selectbox("👇 選擇要查詢的板塊：", sector_names)
+        sector_names = list(ALL_34_SECTOR_HOLDINGS.keys())
+        selected_sector = st.selectbox("👇 選擇要查詢的板塊 (共 34 個)：", sector_names)
         
-        sector_info = FRONTIER_SECTORS[selected_sector]
+        sector_info = ALL_34_SECTOR_HOLDINGS[selected_sector]
         etfs_list = sector_info.get('etfs', [])
         tickers_list = sector_info.get('tickers', [])
+        
+        # 顯示板塊類型標籤 (宏觀板塊 vs 前沿板塊)
+        if selected_sector in MACRO_SECTOR_HOLDINGS:
+            st.markdown("<span style='background-color:#7c4dff; color:white; padding:3px 10px; border-radius:8px; font-size:12px; font-weight:bold;'>🏛️ 傳統宏觀板塊 (GICS)</span>", unsafe_allow_html=True)
+        else:
+            st.markdown("<span style='background-color:#00b4d8; color:white; padding:3px 10px; border-radius:8px; font-size:12px; font-weight:bold;'>⚡ 前沿硬科技與主題霸權</span>", unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
         
         # 顯示多個 ETF
         if etfs_list:
