@@ -1,7 +1,12 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-from openbb import obb
+
+# 🛡️ 爺爺安全防護罩：防止雲端因缺少 openbb 而報錯閃退
+try:
+    from openbb import obb
+except Exception:
+    obb = None
 
 # 🚨 隱形防護罩：確保母艦冷啟動時，記憶體第一時間預備好變數，防止舊分頁報錯
 if 'symbol' not in st.session_state:
@@ -356,16 +361,19 @@ st.markdown("---")
 st.markdown("### 🎯 華爾街主力資金 —— 精細題材流向雷達 (Detailed Sectors)")
 
 try:
-    sector_data = obb.economy.sectors(provider="fmp")
-    df_sec = sector_data.to_df()
-    if not df_sec.empty:
-        df_sorted = df_sec.sort_values(by="change", ascending=False)
-        df_sorted = df_sorted.rename(columns={
-            "sectorName": "精細題材/行業名稱",
-            "change": "今日主力資金漲跌幅 (%)"
-        })
-        st.dataframe(df_sorted[["精細題材/行業名稱", "今日主力資金漲跌幅 (%)"]], use_container_width=True)
+    if obb is not None:
+        sector_data = obb.economy.sectors(provider="fmp")
+        df_sec = sector_data.to_df()
+        if not df_sec.empty:
+            df_sorted = df_sec.sort_values(by="change", ascending=False)
+            df_sorted = df_sorted.rename(columns={
+                "sectorName": "精細題材/行業名稱",
+                "change": "今日主力資金漲跌幅 (%)"
+            })
+            st.dataframe(df_sorted[["精細題材/行業名稱", "今日主力資金漲跌幅 (%)"]], use_container_width=True)
+        else:
+            st.warning("⚠ 數據源正在更新，請稍後重試。")
     else:
-        st.warning("⚠ 數據源正在更新，請稍後重試。")
+        st.info("🔄 OpenBB 細分行業資料庫正在後台建立索引中...")
 except Exception as e:
     st.info("🔄 OpenBB 細分行業資料庫正在後台建立索引中...")
