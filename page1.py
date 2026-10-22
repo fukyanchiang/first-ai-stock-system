@@ -96,7 +96,12 @@ def draw_and_sync_page1(df_display, df_clean, current_price, delta_val, delta_pe
     </div>
     ''', unsafe_allow_html=True)
 
-    # 3. 副圖圖層排列與動態 Domain 計算 (已修復原本語法中斷問題)
+    # 👁️【關鍵升級】圖表頂部精確眼仔開關（預設 False 隱藏圖例，手機滿版不擠壓）
+    ctrl_col1, _ = st.columns([2.5, 1.5])
+    with ctrl_col1:
+        show_legend = st.checkbox("👁️ 顯示指標圖例說明 (手機睇盤建議關閉以獲取超闊 K 線)", value=False, key="p1_show_legend_toggle")
+
+    # 3. 副圖圖層排列與動態 Domain 計算 (已徹底修復減號與折行語法)
     ordered_keys = ["sctr", "rs", "vol", "chive", "drift", "vwap", "finra", "otm", "spring", "vcp", "ttm", "macd", "deltame", "turnvix", "change", "rsi"]
     display_keys = [k for k in ordered_keys if k in active_indicators]
     
@@ -159,13 +164,20 @@ def draw_and_sync_page1(df_display, df_clean, current_price, delta_val, delta_pe
         spikecolor='#a0aec0', spikethickness=1, spikesnap='cursor'
     )
 
+    # 👁️ 將 showlegend 與眼仔開關連動，並緊縮邊距以極大化手機顯示空間
     fig.update_layout(
         template='plotly_dark', paper_bgcolor='#0e1117', plot_bgcolor='#1f293d',
         xaxis_rangeslider_visible=False, barmode='overlay',
-        margin=dict(l=40, r=20, t=10, b=40), height=chart_height,
+        margin=dict(l=35, r=15, t=10, b=30), height=chart_height,
         hovermode='x unified',             
         hoverlabel=dict(bgcolor='#1f293d', font_size=12, font_family='Arial'),
-        legend=dict(font=dict(color="white", size=12)),
+        showlegend=show_legend,
+        legend=dict(
+            font=dict(color="white", size=11),
+            bgcolor="rgba(15, 23, 42, 0.75)",
+            bordercolor="#334155",
+            borderwidth=1
+        ) if show_legend else dict(),
         **y_axes_config
     )
 
@@ -190,12 +202,12 @@ def draw_and_sync_page1(df_display, df_clean, current_price, delta_val, delta_pe
 
         ### 🧭【核心決策總部】五維共振 · 散戶套牢風險指數 (Smart/Dumb Spread)
         系統自動將下方 5 大暗網副圖的即時數值進行矩陣權重運算，提純為頂部的綜合決策看板：
-        - **散戶套牢風險 % (0% ~ 100%)** 與 **剪刀差總分 (-100 ~ +100)**：
-        - 🚨 **極度危險 (風險 ≥ 80% / 總分 ≤ -60)**：5 大維度出現嚴重共振套牢，主力全面出貨完畢，隨時引發踩踏暴跌。
-        - ⚠️ **警戒出貨 (風險 60% ~ 80% / 總分 -20 ~ -60)**：隔夜跳空或早盤出現誘多背馳，造市商暗池空頭對沖加劇。
-        - ⚪ **多空平衡 (風險 40% ~ 60% / 更多 -20 ~ +20)**：資金博弈溫和，處於洗盤整理區間，建議觀望為主。
-        - 🟢 **主力吸籌 (風險 20% ~ 40% / 總分 +20 ~ +60)**：散戶熱情消退，機構尾盤與低位暗中收集籌碼。
-        - 🚀 **黃金底背離 (風險 ≤ 20% / 總分 ≥ +60)**：散戶恐慌割肉完畢，主力極度強勢控盤，大級別反轉前夕。
+- **散戶套牢風險 % (0% ~ 100%)** 與 **剪刀差總分 (-100 ~ +100)**：
+- 🚨 **極度危險 (風險 ≥ 80% / 總分 ≤ -60)**：5 大維度出現嚴重共振套牢，主力全面出貨完畢，隨時引發踩踏暴跌。
+- ⚠️ **警戒出貨 (風險 60% ~ 80% / 總分 -20 ~ -60)**：隔夜跳空或早盤出現誘多背馳，造市商暗池空頭對沖加劇。
+- ⚪ **多空平衡 (風險 40% ~ 60% / 更多 -20 ~ +20)**：資金博弈溫和，處於洗盤整理區間，建議觀望為主。
+- 🟢 **主力吸籌 (風險 20% ~ 40% / 總分 +20 ~ +60)**：散戶熱情消退，機構尾盤與低位暗中收集籌碼。
+- 🚀 **黃金底背離 (風險 ≤ 20% / 總分 ≥ +60)**：散戶恐慌割肉完畢，主力極度強勢控盤，大級別反轉前夕。
         """)
 
     # 6. 王者矩陣戰報
