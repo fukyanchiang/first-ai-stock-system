@@ -1,10 +1,11 @@
 """
 Filename: page_1gann.py
-Description: 📊 艙房一_江恩：工作台主調度入口 (四分頁旗艦架構)
+Description: 📊 艙房一_江恩：工作台主調度入口 (五分頁旗艦架構)
 分頁 1 (Gann 01)：太極時空幾何、Auto Fibonacci、側欄體檢、諧波形態雷達與時空諧波跳躍弧
 分頁 2 (Gann 02)：江恩自然極限 4 軌、VPVR 籌碼、POC、Time Cycle、SL Angle 與成交量
 分頁 3 (Gann 03)：小龍量化四線通道 (Eric's Channel)、4Y 回歸通道、ZL-MACD、成交量與時空跳躍弧
 分頁 4 (Gann 04)：小龍江恩策略 Y (Eric's Three Cloud、Volume Pressure S/R、Momentum Wave、Auto Gann Range)
+分頁 5 (Gann 05)：宏觀板塊ETF 資金流與五年極值回歸 (34大板塊價量壓力、Top 5 買賣力道、5Y 線性回歸通道與波段訊號)
 """
 
 import streamlit as st
@@ -65,6 +66,13 @@ try:
 except ImportError:
     gann04_engine = None
 
+# 🌐 引入 Gann 05 (宏觀板塊 ETF 資金流與 5Y 回歸) 專屬模組
+try:
+    import page_1gann_gann05_main as gann05_engine
+    importlib.reload(gann05_engine)
+except ImportError:
+    gann05_engine = None
+
 try:
     import component_gann_harmonic_arcs as harmonic_comp
     importlib.reload(harmonic_comp)
@@ -93,12 +101,13 @@ def render_gann_taichi_tab(df: pd.DataFrame, period: str = "1y", market_type: st
     df_raw = df.copy()
     df_raw.index = pd.to_datetime(df_raw.index).tz_localize(None)
 
-    # 🎯 頂部 4 大分頁 (正式加入 Gann 04)
-    tab_gann01, tab_gann02, tab_gann03, tab_gann04 = st.tabs([
+    # 🎯 頂部 5 大旗艦分頁 (正式加入 Gann 05)
+    tab_gann01, tab_gann02, tab_gann03, tab_gann04, tab_gann05 = st.tabs([
         "🌌 太極時空幾何與諧波預測 (Gann 01)",
         "📊 江恩自然極限與動能通道 (Gann 02)",
         "📈 小龍量化通道與結構流 (Gann 03)",
-        "🎯 小龍江恩策略 Y (Gann 04)"
+        "🎯 小龍江恩策略 Y (Gann 04)",
+        "🌐 宏觀板塊ETF 資金流與五年極值回歸 (Gann 05)"
     ])
 
     # ==========================================
@@ -439,3 +448,12 @@ def render_gann_taichi_tab(df: pd.DataFrame, period: str = "1y", market_type: st
             gann04_engine.render_page_1gann_gann04_workspace(df_raw, symbol=symbol)
         else:
             st.error("⚠️ 未能載入 `page_1gann_gann04_main.py` 模組。請確認該檔案已建立在專案目錄中。")
+
+    # ==========================================
+    # 🌐 分頁 5：宏觀板塊ETF 資金流與五年極值回歸 (Gann 05)
+    # ==========================================
+    with tab_gann05:
+        if gann05_engine is not None and hasattr(gann05_engine, "render_page_gann05"):
+            gann05_engine.render_page_gann05()
+        else:
+            st.error("⚠️ 未能載入 `page_1gann_gann05_main.py` 模組。請確認該檔案已建立在專案目錄中。")
