@@ -63,11 +63,13 @@ def inject_gann05_css():
 def render_page_gann05():
     inject_gann05_css()
 
-    # 1. 初始化 Session State 選擇板塊
+    # 1. 初始化 Session State 選擇板塊、時間窗與自訂資產搜尋
     if 'gann05_selected_sector' not in st.session_state:
         st.session_state['gann05_selected_sector'] = '金融 (XLF)'
     if 'gann05_time_window' not in st.session_state:
         st.session_state['gann05_time_window'] = '1W'
+    if 'gann05_custom_ticker' not in st.session_state:
+        st.session_state['gann05_custom_ticker'] = ""
 
     # 2. 頂部 4 大導航分頁 (01 市場總覽 / 02 板塊輪動 / 03 圖表與資金 / 04 全部 ETF)
     t1, t2, t3, t4 = st.tabs(["01 市場總覽", "02 板塊輪動", "⭐ 03 圖表與資金", "04 全部 ETF"])
@@ -120,7 +122,7 @@ def render_page_gann05():
                 max_buy = top_buy['資金壓力_B'].max() if top_buy['資金壓力_B'].max() > 0 else 1.0
                 for idx, row in top_buy.iterrows():
                     pct = min(100, int((row['資金壓力_B'] / max_buy) * 100))
-                    is_active = (row['板塊名稱'] == st.session_state['gann05_selected_sector'])
+                    is_active = (row['板塊名稱'] == st.session_state['gann05_selected_sector'] and not st.session_state['gann05_custom_ticker'])
                     border_style = "border: 1px solid #00ff88;" if is_active else "border: 1px solid #1e293b;"
 
                     st.markdown(f"""
@@ -142,7 +144,7 @@ def render_page_gann05():
                 max_sell = abs(top_sell['資金壓力_B'].min()) if abs(top_sell['資金壓力_B'].min()) > 0 else 1.0
                 for idx, row in top_sell.iterrows():
                     pct = min(100, int((abs(row['資金壓力_B']) / max_sell) * 100))
-                    is_active = (row['板塊名稱'] == st.session_state['gann05_selected_sector'])
+                    is_active = (row['板塊名稱'] == st.session_state['gann05_selected_sector'] and not st.session_state['gann05_custom_ticker'])
                     border_style = "border: 1px solid #f43f5e;" if is_active else "border: 1px solid #1e293b;"
 
                     st.markdown(f"""
@@ -167,32 +169,63 @@ def render_page_gann05():
             new_sec = st.selectbox("🎯 快速切換 34 板塊主圖：", all_sectors, index=curr_idx)
             if new_sec != st.session_state['gann05_selected_sector']:
                 st.session_state['gann05_selected_sector'] = new_sec
+                # 切換板塊時自動清空自訂資產代號，回到板塊大圖模式
+                st.session_state['gann05_custom_ticker'] = ""
                 st.rerun()
 
         # -------------------------------------------------------------
         # 左側：5 年週線回歸通道大圖表與狀態資訊
         # -------------------------------------------------------------
         with chart_col:
-            sec_name = st.session_state['gann05_selected_sector']
-            sec_cfg = GANN05_SECTOR_CONFIG.get(sec_name, GANN05_SECTOR_CONFIG['金融 (XLF)'])
-            anchor_ticker = sec_cfg['anchor']
+            # 🌟 1. 自訂資產查詢輸入列 (支援美股 / 港股 / 加密幣 / ETF 5 年回歸通道)
+            col_inp, col_btn = st.columns([3.4, 1.2])
+            with col_inp:
+                searched_code = st.text_input(
+                    "自訂資產代碼",
+                    value=st.session_state['gann05_custom_ticker'],
+                    placeholder="🔍 自訂輸入任何資產代碼 (例如 NVDA, TSLA, 0700.HK, 2800.HK, BTC-USD)...",
+                    label_visibility="collapsed"
+                ).strip().upper()
+                if searched_code != st.session_state['gann05_custom_ticker']:
+                    st.session_state['gann05_custom_ticker'] = searched_code
+                    st.rerun()
+
+            with col_btn:
+                if st.session_state['gann05_custom_ticker']:
+                    if st.button("🔄 返回板塊", use_container_width=True):
+                        st.session_state['gann05_custom_ticker'] = ""
+                        st.rerun()
+                else:
+                    st.markdown("<div style='font-size:11.5px; color:#94a3b8; padding-top:7px;'>👈 輸入代碼即畫 5 年圖</div>", unsafe_allow_html=True)
+
+            # 判定當前繪圖目標 (若有自訂輸入則優先繪製自訂資產，否則繪製當前選中之板塊)
+            active_custom = st.session_state['gann05_custom_ticker']
+            if active_custom:
+                sec_name = f"🌟 自訂資產: {active_custom}"
+                anchor_ticker = active_custom
+                badge_text = f"自訂查詢: {active_custom}"
+            else:
+                sec_name = st.session_state['gann05_selected_sector']
+                sec_cfg = GANN05_SECTOR_CONFIG.get(sec_name, GANN05_SECTOR_CONFIG['金融 (XLF)'])
+                anchor_ticker = sec_cfg['anchor']
+                badge_text = f"錨定標的: {anchor_ticker}"
 
             # 抓取 5 年週線並運算
-            with st.spinner(f"正在加載 {sec_name} ({anchor_ticker}) 5年週線數據..."):
+            with st.spinner(f"正在加載 {anchor_ticker} 5 年週線數據..."):
                 df_weekly = fetch_weekly_data(anchor_ticker)
                 metrics, data_calc = compute_regression_channel_metrics(df_weekly)
 
             if not metrics:
-                st.warning(f"⚠️ 暫時未能取得 {anchor_ticker} 的 5 年歷史週線數據。")
+                st.warning(f"⚠️ 暫時未能取得代號 '{anchor_ticker}' 的 5 年歷史週線數據，請確認代碼是否正確 (例如美股 NVDA、港股 0700.HK、加密貨幣 BTC-USD)。")
             else:
-                # 1. 頂部狀態列 (對齊截圖 10.34.01)
+                # 2. 頂部狀態列 (對齊截圖 10.34.01)
                 st.markdown(f"""
                 <div class="gann05-header-box">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap;">
                         <div>
                             <span style="font-size:18px; font-weight:bold; color:#f8fafc;">{sec_name}</span>
                             <span style="margin-left:8px; font-size:12px; color:#38bdf8; background:#0f172a; padding:2px 8px; border-radius:4px; border:1px solid #1e293b;">
-                                錨定標的: {anchor_ticker}
+                                {badge_text}
                             </span>
                         </div>
                         <div style="font-size:22px; font-weight:bold; color:#00ff88;">
@@ -210,7 +243,7 @@ def render_page_gann05():
                 </div>
                 """, unsafe_allow_html=True)
 
-                # 2. 圖表控制欄 (線性回歸統計、買賣訊號開關)
+                # 3. 圖表控制欄 (線性回歸統計、買賣訊號開關)
                 c_ctrl1, c_ctrl2 = st.columns([3, 1])
                 with c_ctrl1:
                     st.markdown(f"""
@@ -224,7 +257,7 @@ def render_page_gann05():
                 with c_ctrl2:
                     show_signals = st.checkbox("買賣訊號", value=True, key="gann05_chk_sig")
 
-                # 3. 繪製 5 年回歸大圖
+                # 4. 繪製 5 年回歸大圖
                 fig_reg = render_regression_plotly_chart(
                     data=data_calc, metrics=metrics, symbol_name=sec_name, show_signals=show_signals
                 )
