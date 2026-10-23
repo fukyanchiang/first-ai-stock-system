@@ -376,4 +376,4 @@ try:
     else:
         st.info("🔄 OpenBB 細分行業資料庫正在後台建立索引中...")
 except Exception as e:
-    st.info("🔄 OpenBB 細分行業資料庫正在後台建立索引中...")
+    st.info("🔄 OpenBB 細分行業資料庫正在後台建立索引中...")# reload cloud Sat Oct 24 00:07:21 HKT 2026
