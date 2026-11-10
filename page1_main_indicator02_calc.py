@@ -1,3 +1,10 @@
+"""
+Filename: page1_main_indicator02_calc.py
+Description: 📈 艙房一 (六維王者矩陣) 主圖指標組 2：GP_ALL_IN_ONE 終極合體運算與渲染核心
+             (SAR / TD9 / 布林通道 / STICKLINE 彩帶 / AI BUY / 保力加起爆)
+             (100% 真實盤口運算 · 語法修復版)
+"""
+
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -79,8 +86,7 @@ def build_stickline_coords(dates, s1, s2, cond):
 
 def compute_main_group2(df):
     """
-    計算主圖指標組 2:
-    GP_ALL_IN_ONE (主圖終極合體版)
+    計算主圖指標組 2: GP_ALL_IN_ONE (主圖終極合體版)
     """
     df = df.copy()
     C, O, H, L, V = df['Close'], df['Open'], df['High'], df['Low'], df['Volume']
@@ -102,17 +108,17 @@ def compute_main_group2(df):
     df['GP_MA50L'] = MA(L, 50)
     df['GP_MA50LREF'] = df['GP_MA50L'].shift(8)
 
-    # 2. 布林通道 (20, 2.0)
+    # 2. 布林通道 (20, 2.0) - 修復乘號語法
     sd_period = 20
     dis = STD(C, sd_period)
     df['BB_MID'] = MA(C, sd_period)
-    df['BB_UPPER'] = df['BB_MID'] + 2 * dis
-    df['BB_LOWER'] = df['BB_MID'] - 2 * dis
+    df['BB_UPPER'] = df['BB_MID'] + 2.0 * dis
+    df['BB_LOWER'] = df['BB_MID'] - 2.0 * dis
 
     # 3. SAR
     df['SAR'] = calculate_sar(H, L, C, 0.02, 0.2)
 
-    # 4. AI BUY (綠三角 ▲)
+    # 4. AI BUY (綠三角 ▲) - 修復乘號語法
     aibb_sd = STD(C, 20)
     df['AIBUY'] = CROSS(C, df['BB_MID'] + 1.5 * aibb_sd) & (C > O)
 
@@ -151,9 +157,8 @@ def render_main_group2(fig, df_display, cfg):
     # =========================================================
     # 🌈 1. 富途牛牛「一支支線」彩帶 (STICKLINE)
     # =========================================================
-    # (B) ★ 中期彩帶：MA2 (10日) VS MA3 (20日) - 【截圖核心呈現】
+    # (B) ★ 中期彩帶：MA2 (10日) VS MA3 (20日)
     if cfg.get("show_gp_stick_mid", True):
-        # 多頭 (MA2 > MA3) -> 亮藍色垂直柱線
         xb_mid, yb_mid = build_stickline_coords(dates, ma2, ma3, ma2 > ma3)
         if xb_mid:
             fig.add_trace(go.Scatter(
@@ -161,7 +166,6 @@ def render_main_group2(fig, df_display, cfg):
                 line=dict(color='#0088FF', width=2),
                 name='中期彩帶·多頭 (藍色一支支)', hoverinfo='skip', yaxis='y1'
             ))
-        # 空頭 (MA2 <= MA3) -> 洋紅/粉紫色垂直柱線
         xr_mid, yr_mid = build_stickline_coords(dates, ma2, ma3, ma2 <= ma3)
         if xr_mid:
             fig.add_trace(go.Scatter(

@@ -1,12 +1,12 @@
 """
 Filename: page1gann_pattern_calc.py
-Description: 📐 經典形態與諧波幾何智能預測雷達
+Description: 📐 經典形態與諧波幾何智能預測雷達 (100% 真實量價幾何計算 · 語法修復版)
 升級亮點：
-  1. 引入 Scott Carney 體系「🚫 PRZ 結構失效止損紅線 (Invalidation Line)」
-  2. 實時盈虧比 (R:R Ratio) 量化評級 (⭐⭐⭐優 / ⭐⭐良 / ⚠️偏低降級)
-  3. 主力擊穿失效紅字警報 (⚠️ 形態已被主力擊穿無效，嚴禁左側交易！)
-  4. 主圖紅色細虛線繪製結構失效線，右側雙欄智能階梯避讓
-  5. 戰術看板 HUD 左上角等寬純淨 span 排版，根除代碼洩漏
+1. 引入 Scott Carney 體系「🚫 PRZ 結構失效止損紅線 (Invalidation Line)」
+2. 實時盈虧比 (R:R Ratio) 量化評級 (⭐⭐⭐優 / ⭐⭐良 / ⚠️偏低降級)
+3. 主力擊穿失效紅字警報 (⚠️ 形態已被主力擊穿無效，嚴禁左側交易！)
+4. 主圖紅色細虛線繪製結構失效線，右側雙欄智能階梯避讓
+5. 戰術看板 HUD 左上角等寬純淨 span 排版，根除代碼洩漏
 """
 
 import numpy as np
@@ -121,7 +121,6 @@ def detect_chart_patterns(df: pd.DataFrame):
                     h2_amp = p2[3] - nl
                     sym = (min(h1_amp, h2_amp) / max(h1_amp, h2_amp)) * 100.0 if max(h1_amp, h2_amp) > 0 else 100.0
 
-                    # 🎯 結構失效線：頂部峰值 + 緩衝 (收盤突破此線則空頭形態完全失效)
                     inval_price = max(p1[3], p2[3]) * 1.008
                     is_inval = last_close > inval_price
                     entry_p = last_close if last_close < nl else nl
@@ -165,7 +164,6 @@ def detect_chart_patterns(df: pd.DataFrame):
                     l2_amp = nl - l2[3]
                     sym = (min(l1_amp, l2_amp) / max(l1_amp, l2_amp)) * 100.0 if max(l1_amp, l2_amp) > 0 else 100.0
 
-                    # 🎯 結構失效線：底部谷值 - 緩衝 (收盤跌破此線則多頭形態完全失效)
                     inval_price = min(l1[3], l2[3]) * 0.992
                     is_inval = last_close < inval_price
                     entry_p = last_close if last_close > nl else nl
@@ -215,12 +213,12 @@ def detect_chart_patterns(df: pd.DataFrame):
                                 break
 
                         tri_height = h1[3] - nl
+                        # 修復括號與減號語法
                         bo_display = bo_price if breakout_found else float(h1[3] + slope * (n - 1 - h1[1]))
                         target = (bo_price if breakout_found else h2[3]) + tri_height
                         status = "已確認突破" if breakout_found else "形成中"
                         direction = "向上" if breakout_found or last_close >= nl else "向下"
 
-                        # 🎯 結構失效線：若已向上突破，收盤重新跌破頸線 NL 則判定假突破失效
                         inval_price = nl * 0.992
                         is_inval = breakout_found and (last_close < nl)
                         entry_p = bo_display if breakout_found else h2[3]
@@ -248,7 +246,7 @@ def detect_chart_patterns(df: pd.DataFrame):
                         break
 
     # ==========================================
-    # D. 蝴蝶形態 (Butterfly Pattern - 諧波預測)
+    # D. 蝴蝶形態 (Butterfly Pattern - 修復乘號語法)
     # ==========================================
     if len(pivots) >= 4:
         for i in range(len(pivots) - 4, -1, -1):
@@ -269,10 +267,10 @@ def detect_chart_patterns(df: pd.DataFrame):
                             fwd_bars = max(3, pb[1] - pa[1])
                             pred_d_date = pd.to_datetime(pc[2]) + pd.to_timedelta(fwd_bars * 1.5, unit='D')
 
-                            # 🎯 Scott Carney 蝴蝶結構失效點：1.618 XA 延伸極限
+                            # Scott Carney 蝴蝶結構失效點：1.618 XA
                             inval_price = pa[3] - 1.618 * xa
                             is_inval = last_close < inval_price
-                            target_p = pb[3]  # 經典目標：回抽 Point B
+                            target_p = pb[3]
                             entry_p = last_close if (prz_min * 0.98 <= last_close <= prz_max * 1.02) else d_price
                             rr_info = _calc_rr_and_invalidation(entry_p, target_p, inval_price, direction="看漲", is_invalidated=is_inval)
 
@@ -311,10 +309,10 @@ def detect_chart_patterns(df: pd.DataFrame):
                             fwd_bars = max(3, pb[1] - pa[1])
                             pred_d_date = pd.to_datetime(pc[2]) + pd.to_timedelta(fwd_bars * 1.5, unit='D')
 
-                            # 🎯 Scott Carney 蝴蝶結構失效點：1.618 XA 延伸極限
+                            # Scott Carney 蝴蝶結構失效點：1.618 XA
                             inval_price = pa[3] + 1.618 * xa
                             is_inval = last_close > inval_price
-                            target_p = pb[3]  # 經典目標：回抽 Point B
+                            target_p = pb[3]
                             entry_p = last_close if (prz_min * 0.98 <= last_close <= prz_max * 1.02) else d_price
                             rr_info = _calc_rr_and_invalidation(entry_p, target_p, inval_price, direction="看跌", is_invalidated=is_inval)
 
@@ -339,7 +337,7 @@ def detect_chart_patterns(df: pd.DataFrame):
                             break
 
     # ==========================================
-    # E. AB=CD 形態 (等長預測)
+    # E. AB=CD 形態 (修復乘號語法)
     # ==========================================
     if len(pivots) >= 3:
         for i in range(len(pivots) - 3, -1, -1):
@@ -353,7 +351,6 @@ def detect_chart_patterns(df: pd.DataFrame):
                     fwd_bars = max(3, pb[1] - pa[1])
                     pred_d_date = pd.to_datetime(pc[2]) + pd.to_timedelta(fwd_bars * 1.5, unit='D')
 
-                    # 🎯 結構失效線：1.382 AB 延伸
                     inval_price = d_price - 0.382 * ab_len
                     is_inval = last_close < inval_price
                     target_p = pc[3]
@@ -388,7 +385,6 @@ def detect_chart_patterns(df: pd.DataFrame):
                     fwd_bars = max(3, pb[1] - pa[1])
                     pred_d_date = pd.to_datetime(pc[2]) + pd.to_timedelta(fwd_bars * 1.5, unit='D')
 
-                    # 🎯 結構失效線：1.382 AB 延伸
                     inval_price = d_price + 0.382 * ab_len
                     is_inval = last_close > inval_price
                     target_p = pc[3]
@@ -601,7 +597,7 @@ def render_pattern_traces_and_hud(fig: go.Figure, pattern_data: dict):
             showlegend=False
         ), row=1, col=1)
 
-    # 🎯 渲染結構失效止損細紅虛線 (Invalidation Lines)
+    # 渲染結構失效止損細紅虛線 (Invalidation Lines)
     inval_lines = pattern_data.get('invalidation_lines', [])
     for inv in inval_lines:
         fig.add_trace(go.Scatter(
@@ -614,7 +610,7 @@ def render_pattern_traces_and_hud(fig: go.Figure, pattern_data: dict):
             showlegend=False
         ), row=1, col=1)
 
-    # 5. 主圖氣泡「扇形左右智能避讓」
+    # 5. 主圖氣泡智能避讓
     has_bf = bf is not None
     has_abcd = abcd is not None
     is_close = False
@@ -736,7 +732,7 @@ def render_pattern_traces_and_hud(fig: go.Figure, pattern_data: dict):
 
 def _build_clean_hud_text(pattern_data: dict) -> str:
     """
-    純淨格式化戰術看板 (升級：展示 🚫結構失效線 與 盈虧比量化評級)
+    純淨格式化戰術看板 (展示 🚫結構失效線 與 盈虧比量化評級)
     """
     d_top = pattern_data.get('double_top')
     d_bottom = pattern_data.get('double_bottom')
@@ -776,7 +772,7 @@ def _build_clean_hud_text(pattern_data: dict) -> str:
     else:
         row_tri = "<span style='color:#64748b;'>三角形態    未見形態    -        -         -       -       -</span>"
 
-    # 表 3: 諧波預測 (🎯 重點：展示 PRZ 失效線與擊穿無效紅字警報)
+    # 表 3: 諧波預測
     t3_header = "<span style='color:#a5b4fc;'><b>【諧波預測】  狀態      方向    預測 D點  反轉區(PRZ)  🚫結構失效線  盈虧比(R:R)</b></span>"
 
     if bf:

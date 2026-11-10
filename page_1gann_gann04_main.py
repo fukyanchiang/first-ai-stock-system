@@ -1,20 +1,17 @@
 """
 Filename: page_1gann_gann04_main.py
-Description: 📊 頁面 4 (Gann 04)：小龍江恩策略 Y 專屬操盤工作台 (四維共振決策卡 + 可收合計分說明拉掣版)
-升級亮點：
-  1. 🌟 [全新加入] 📖 四維共振計分說明與交易室戰術指引 (可折疊拉掣，隨開隨看)
-  2. 🌟 時空量價「四維共振決策引擎」(Confluence Score Engine)：
-     - 整合 趨勢(三雲) + 量能(Volume Plus) + 動能(SL Angle/動能波) + 時空(2R週期/S-R支阻)
-     - 輸出 -100 ~ +100 分綜合評級與交易室實戰指令卡
-  3. 🌟 SL Angle ATR-14 波動率標準化 (映射江恩 1x1 45° 平衡線與 ±60° 警戒線)
-  4. 🌟 江恩八度音階同頻諧振 (Time Cycle 2R 與基準週期 R 實時鎖定，谷底精準對齊 12/22)
-  5. 🌟 S/R 支阻動態極性翻轉 (Polarity Principle) + 頂部即時風控空間 %
-  6. 🌟 26px 價格防碰撞鬆弛演算法 (已納入 S/R、現價及 Eric's Channel 中軸，徹底杜絕標籤重疊切字) + 右側 68px 安全留白保護
+Description: 📊 頁面 4 (Gann 04)：小龍江恩策略 Y 專屬操盤工作台 (全球六大多空市場萬能資產旗艦版)
+- 單行極簡看盤工具列 (左側智能搜尋框 + 右側核心標的快速選單 + 刷新按鈕)
+- 內建一鍵收放的「全球六大市場代碼輸入指南說明表」(st.expander 預設收起，約 28px 不佔垂直空間)
+- 純數字智能容錯免後綴 (打 5/700 自動轉 0005.HK/0700.HK，打 600519 自動轉 600519.SS，美/日/韓/A 股自由切換)
+- 全球貨幣符號自適應 (HK$, $, ¥, ₩)
+- 100% 完整保留底層量化演算法：三雲多邊形漸變、真實成交量沉澱支阻 (S/R)、Volume Plus、動能波、Auto Gann Range 16射線、八度音階同頻諧振週期、ATR標準化動能角度與四維共振決策卡
 """
 
 import streamlit as st
 import pandas as pd
 import numpy as np
+import yfinance as yf
 import plotly.graph_objects as go
 from plotly.subplots import SubplotRef
 import importlib
@@ -43,6 +40,93 @@ try:
     importlib.reload(harmonic_comp)
 except ImportError:
     harmonic_comp = None
+
+
+# =========================================================================
+# 🌐 全球跨市場資產解析器 (含純數字智能自動補全)
+# =========================================================================
+def resolve_global_symbol_info(symbol: str):
+    sym = str(symbol).strip().upper()
+    if not sym:
+        sym = "2800.HK"
+
+    # 1. 純數字智能容錯
+    if sym.isdigit():
+        if len(sym) <= 5:
+            padded = sym.zfill(4 if len(sym) <= 4 else 5)
+            return f"{padded}.HK", "HK$", "港股 / 港股 ETF"
+        elif len(sym) == 6:
+            if sym.startswith(('60', '68', '51', '58')):
+                return f"{sym}.SS", "¥", "中國 A 股 (上證) / ETF"
+            elif sym.startswith(('00', '30', '15', '16')):
+                return f"{sym}.SZ", "¥", "中國 A 股 (深證) / ETF"
+            else:
+                return f"{sym}.SS", "¥", "中國 A 股"
+
+    # 2. 帶後綴或英文代碼處理
+    if sym.endswith(".HK"):
+        code_part = sym[:-3]
+        if code_part.isdigit() and len(code_part) < 4:
+            code_part = code_part.zfill(4)
+        return f"{code_part}.HK", "HK$", "港股 / 港股 ETF"
+    elif sym.endswith(".T"):
+        return sym, "¥", "日股 / 日股 ETF"
+    elif sym.endswith(".KS"):
+        return sym, "₩", "韓股 KOSPI / 韓股 ETF"
+    elif sym.endswith(".KQ"):
+        return sym, "₩", "韓股 KOSDAQ"
+    elif sym.endswith(".SS"):
+        return sym, "¥", "中國 A 股 (上證) / ETF"
+    elif sym.endswith(".SZ"):
+        return sym, "¥", "中國 A 股 (深證) / ETF"
+    else:
+        return sym, "$", "美股 / 美股 ETF / 全球資產"
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def fetch_gann04_dynamic_data(ticker_symbol: str, period: str = "2y", interval: str = "1d"):
+    try:
+        clean_symbol, _, _ = resolve_global_symbol_info(ticker_symbol)
+        t = yf.Ticker(clean_symbol)
+        df = t.history(period=period, interval=interval)
+        if df.empty or len(df) < 15:
+            df_fallback = t.history(period="1y", interval="1d")
+            if not df_fallback.empty:
+                df = df_fallback
+        if hasattr(df.index, 'tz') and df.index.tz is not None:
+            df.index = df.index.tz_localize(None)
+        return df.dropna(subset=['Close'])
+    except Exception:
+        return pd.DataFrame()
+
+
+def render_global_guide_expander_g04():
+    """
+    📘 預設收起的全球六大市場代碼輸入指南 (約 28px，不佔垂直空間)
+    """
+    with st.expander("📖 全球跨市場股票與 ETF 代碼輸入指南 (點擊展開 / 收起)", expanded=False):
+        st.markdown("""
+| 市場分類 | 支援標的類別 | 快捷輸入法 (直接鍵入) | 系統標準代碼 | 代表性股票 / ETF 範例 | 計價幣別 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **🇭🇰 港股** | 藍籌 / 科技股 | `5`、`700`、`9988` | `0005.HK`、`0700.HK` | 匯豐控股、騰訊控股、阿里巴巴 | **HK$** |
+| **🇭🇰 港股 ETF** | 恒指 / 科指 ETF | `2800`、`3033`、`3119` | `2800.HK`、`3033.HK` | 盈富基金、南方恒科、華夏納指 | **HK$** |
+| **🇺🇸 美股** | 科技巨頭 / 權重股 | `NVDA`、`TSLA`、`AAPL` | `NVDA`、`TSLA` | 輝達、特斯拉、蘋果 | **$** |
+| **🇺🇸 美股 ETF** | 大盤 / 行業指數 | `SPY`、`QQQ`、`SOXX` | `SPY`、`QQQ` | 標普500、納指100、半導體ETF | **$** |
+| **🇯🇵 日股** | 跨國巨頭 | `7203.T`、`9984.T` | `7203.T`、`9984.T` | 豐田汽車、軟銀集團 | **¥ (JPY)** |
+| **🇯🇵 日股 ETF** | 日經225 / 東證ETF | `1321.T`、`1306.T` | `1321.T`、`1306.T` | 野村日經225、TOPIX 東證ETF | **¥ (JPY)** |
+| **🇰🇷 韓股** | 韓國綜合 (KOSPI) | `005930.KS`、`000660.KS` | `005930.KS` | 三星電子、SK 海力士 | **₩ (KRW)** |
+| **🇰🇷 韓股 ETF** | 韓國 200 指數 ETF | `069500.KS` | `069500.KS` | KODEX 200 韓股大盤 ETF | **₩ (KRW)** |
+| **🇨🇳 滬 A 股** | 上證主板 / 科創板 | `600519`、`601398` | `600519.SS` | 貴州茅台、工商銀行 | **¥ (RMB)** |
+| **🇨🇳 滬市 ETF** | 滬深300 / 上證50 | `510300`、`510050` | `510300.SS` | 華泰滬深300、華夏上證50 | **¥ (RMB)** |
+| **🇨🇳 深 A 股** | 深證主板 / 創業板 | `000858`、`300750` | `000858.SZ` | 五糧液、寧德時代 | **¥ (RMB)** |
+| **🇨🇳 深市 ETF** | 創業板 / 滬深300 | `159915`、`159919` | `159915.SZ` | 易方達創業板、嘉實300 | **¥ (RMB)** |
+
+> 💡 **智能免後綴小提示**：
+> 1. 輸入 **1～5 位純數字**，系統自動補零並轉為港股 `.HK`（如輸入 `5` 自動轉為 `0005.HK`）。
+> 2. 輸入 **6 位純數字**（`60/68/51` 開頭），自動補為滬市 `.SS`；（`00/30/15` 開頭），自動補為深市 `.SZ`。
+> 3. 輸入 **純英文字母**（如 `NVDA`、`SPY`），自動按美股標準查詢。
+> 4. 日股請在數字後加 **`.T`**，韓股請加 **`.KS`**。
+        """, unsafe_allow_html=True)
 
 
 def build_grid_ref(num_rows):
@@ -96,10 +180,7 @@ def get_cloud_polygon_segments(dates, lead_series, lag_series, bull_fill, bear_f
 
 
 def resolve_label_collisions(items, min_gap_px=26, total_height_px=500, p_min=100, p_max=300):
-    """
-    一維標籤防重疊鬆弛演算法：
-    以全局真實坐標為基準，自動推開距離過近的價格膠囊，確保垂直間隔至少 min_gap_px
-    """
+    """一維標籤防重疊鬆弛演算法：自動推開過近的價格膠囊"""
     sorted_items = sorted(items, key=lambda x: x['price'])
     n = len(sorted_items)
     if n <= 1:
@@ -131,10 +212,7 @@ def resolve_label_collisions(items, min_gap_px=26, total_height_px=500, p_min=10
 
 
 def compute_resonant_time_cycle(df: pd.DataFrame, r_period: int = 47, future_days: int = 85, harmonic_data: dict = None):
-    """
-    江恩八度音階同頻諧振時間週期計算引擎：
-    將 Time Cycle 週期直接與主圖諧波基準週期 R (2R 主循環 + R 次級諧波) 實施相位鎖定
-    """
+    """江恩八度音階同頻諧振時間週期計算引擎 (真實波段物理基頻自適應測量)"""
     dates_hist = df.index
     last_date = dates_hist[-1]
 
@@ -144,8 +222,6 @@ def compute_resonant_time_cycle(df: pd.DataFrame, r_period: int = 47, future_day
     all_dates = dates_hist.append(future_dates)
     n_total = len(all_dates)
     n_hist = len(dates_hist)
-
-    cycle_bars = max(10, int(r_period * 2))
 
     a2_dt = None
     a1_dt = None
@@ -161,13 +237,34 @@ def compute_resonant_time_cycle(df: pd.DataFrame, r_period: int = 47, future_day
         except Exception:
             a1_dt = None
 
+    if a1_dt is not None and a2_dt is not None:
+        pos_a2 = all_dates.get_loc(a2_dt) if a2_dt in all_dates else n_hist - 1
+        pos_a1 = all_dates.get_loc(a1_dt) if a1_dt in all_dates else 0
+        measured_r = abs(pos_a2 - pos_a1)
+        effective_r = max(10, int(measured_r))
+    else:
+        highs = df['High'].values
+        lows = df['Low'].values
+        pivots_idx = []
+        for i in range(3, len(df) - 3):
+            if highs[i] == max(highs[i - 3:i + 4]):
+                pivots_idx.append(i)
+            elif lows[i] == min(lows[i - 3:i + 4]):
+                pivots_idx.append(i)
+        if len(pivots_idx) >= 2:
+            effective_r = int(np.clip(np.median(np.diff(pivots_idx)) * 2.0, 15, 80))
+        else:
+            effective_r = r_period
+
+    cycle_bars = max(10, int(effective_r * 2))
+
     if a2_dt is not None:
         if a2_dt in all_dates:
             a2_idx = all_dates.get_loc(a2_dt)
         else:
             a2_idx = int(np.argmin(np.abs(all_dates - a2_dt)))
     else:
-        lookback = min(len(df), max(10, r_period))
+        lookback = min(len(df), max(10, effective_r))
         sub_highs = df['High'].iloc[-lookback:]
         sub_lows = df['Low'].iloc[-lookback:]
         h_idx = sub_highs.idxmax()
@@ -190,14 +287,12 @@ def compute_resonant_time_cycle(df: pd.DataFrame, r_period: int = 47, future_day
         a2_is_peak = bool(harmonic_data['a2_type'] == 'high')
 
     base_phase_a2 = (np.pi / 2.0) if a2_is_peak else (3.0 * np.pi / 2.0)
-
     idx_arr = np.arange(n_total) - a2_idx
-    omega = 2.0 * np.pi / cycle_bars
+    omega = 2.0 * np.pi / float(cycle_bars)
     phases = base_phase_a2 + omega * idx_arr
 
     cycle_vals = 100.0 * np.sin(phases)
-
-    omega_sub = 2.0 * np.pi / max(5, int(r_period))
+    omega_sub = 2.0 * np.pi / float(max(5, int(effective_r)))
     sub_cycle_vals = 30.0 * np.sin(base_phase_a2 + omega_sub * idx_arr)
 
     pos_cycle = np.where(cycle_vals >= 0, cycle_vals, np.nan)
@@ -249,16 +344,12 @@ def compute_resonant_time_cycle(df: pd.DataFrame, r_period: int = 47, future_day
         'current_phase_deg': curr_phase_deg,
         'next_turn_bars': next_turn_bars,
         'cycle_bars': cycle_bars,
-        'r_period': r_period
+        'r_period': effective_r
     }
 
 
 def compute_atr_normalized_sl_angle(df: pd.DataFrame, lookback_k: int = 5, atr_len: int = 14):
-    """
-    SL Angle 幾何動能線 ATR 波動率標準化計算引擎：
-    - 將價格位移除以 (k * ATR_14)，消除股票價格尺度的絕對偏差
-    - 1 ATR/Bar 的推進速率剛好對齊 45° (江恩 1x1 線)
-    """
+    """SL Angle 幾何動能線 ATR 波動率標準化計算引擎"""
     if df is None or len(df) < 5:
         return None
 
@@ -278,7 +369,6 @@ def compute_atr_normalized_sl_angle(df: pd.DataFrame, lookback_k: int = 5, atr_l
 
     angle_rad = np.arctan(norm_slope)
     angle_deg = np.degrees(angle_rad)
-
     angle_smooth = angle_deg.ewm(span=3, adjust=False).mean().fillna(0.0)
 
     pos_angles = np.where(angle_smooth >= 0, angle_smooth, np.nan)
@@ -322,104 +412,123 @@ def compute_atr_normalized_sl_angle(df: pd.DataFrame, lookback_k: int = 5, atr_l
 
 
 def compute_confluence_score(cloud_data, vol_data, mome_data, cycle_data, sl_data, sr_levels, df_chart):
+    """四維共振決策引擎 (連續平滑量化評分升級版，滿分 [-100, +100])"""
     items = []
-    total_score = 0
+    total_score = 0.0
 
-    # 1. 趨勢維度 (Eric's Three Cloud) - 25分
-    trend_score = 0
-    if cloud_data:
-        status_txt = cloud_data.get('trend_status', '')
-        if '多頭' in status_txt or 'Bull' in status_txt:
-            trend_score = 25
-            trend_desc = "多頭排列"
-        elif '空頭' in status_txt or 'Bear' in status_txt:
-            trend_score = -25
-            trend_desc = "空頭排列"
+    # 1. 趨勢維度: 基於三雲的真實厚度與分離率 (歸一化至 ATR)
+    trend_score = 0.0
+    if cloud_data and len(df_chart) > 0:
+        c = df_chart['Close']
+        h = df_chart['High']
+        l = df_chart['Low']
+        tr = np.maximum(h - l, np.maximum(abs(h - c.shift(1).bfill()), abs(l - c.shift(1).bfill())))
+        atr = float(tr.tail(14).mean()) if len(tr) >= 14 else 1.0
+        atr = max(1e-4, atr)
+
+        diff_f = float(cloud_data['fast_lead'].iloc[-1] - cloud_data['fast_lag'].iloc[-1]) / atr
+        diff_m = float(cloud_data['mid_lead'].iloc[-1] - cloud_data['mid_lag'].iloc[-1]) / atr
+        diff_s = float(cloud_data['slow_lead'].iloc[-1] - cloud_data['slow_lag'].iloc[-1]) / atr
+
+        raw_t = (diff_f * 0.40 + diff_m * 0.35 + diff_s * 0.25) * 18.0
+        trend_score = float(np.clip(raw_t, -25.0, 25.0))
+
+        if trend_score >= 12.0:
+            trend_desc = f"三雲強烈多頭 (+{trend_score:.1f})"
+        elif trend_score >= 3.0:
+            trend_desc = f"三雲偏多排列 (+{trend_score:.1f})"
+        elif trend_score <= -12.0:
+            trend_desc = f"三雲強烈空頭 ({trend_score:.1f})"
+        elif trend_score <= -3.0:
+            trend_desc = f"三雲偏空壓制 ({trend_score:.1f})"
         else:
-            trend_score = 0
-            trend_desc = "震盪收斂"
+            trend_desc = f"三雲糾纏收斂 ({trend_score:+.1f})"
     else:
         trend_desc = "未啟用"
-    items.append(('趨勢雲帶', trend_desc, trend_score))
+    items.append(('趨勢雲帶', trend_desc, int(round(trend_score))))
     total_score += trend_score
 
-    # 2. 量能維度 (Volume Plus) - 25分
-    vol_score = 0
+    # 2. 量能維度: 真實成交量倍數與價格動能衝量 (Volume Impulse)
+    vol_score = 0.0
     if vol_data and len(df_chart) >= 2:
-        last_v = vol_data['volume'].iloc[-1]
-        last_ma = vol_data['last_ma']
-        is_up = df_chart['Close'].iloc[-1] >= df_chart['Close'].iloc[-2]
-        ratio = last_v / max(1.0, last_ma)
-        if ratio >= 1.5:
-            vol_score = 25 if is_up else -25
-            vol_desc = f"放量爆發 {ratio:.1f}x"
-        elif ratio >= 1.0:
-            vol_score = 15 if is_up else -15
-            vol_desc = f"溫和放量 {ratio:.1f}x"
+        last_v = float(vol_data['volume'].iloc[-1])
+        last_ma = max(1.0, float(vol_data['last_ma']))
+        vr = last_v / last_ma
+
+        c = df_chart['Close']
+        ret_pct = float((c.iloc[-1] / c.iloc[-2] - 1.0) * 100.0)
+        direction_sign = np.tanh(ret_pct * 0.8)
+
+        if vr >= 1.0:
+            raw_v = (vr - 1.0) * 15.0 * direction_sign + (direction_sign * 8.0)
         else:
-            vol_score = 0
-            vol_desc = f"量縮收斂 {ratio:.1f}x"
+            raw_v = (vr - 1.0) * 8.0 * direction_sign
+        vol_score = float(np.clip(raw_v, -25.0, 25.0))
+        vol_desc = f"量能 {vr:.1f}x / 漲跌 {ret_pct:+.1f}%"
     else:
         vol_desc = "未啟用"
-    items.append(('量能爆發', vol_desc, vol_score))
+    items.append(('量能爆發', vol_desc, int(round(vol_score))))
     total_score += vol_score
 
-    # 3. 動能與幾何維度 (Momentum Wave & SL Angle) - 25分
-    m_val = mome_data['last_val'] if mome_data else 0
-    m_pt = 10 if m_val >= 0 else -10
-
-    sl_ang = sl_data['last_angle'] if sl_data else 0
-    if sl_ang >= 45:
-        sl_pt = 15
-    elif sl_ang > 15:
-        sl_pt = 10
-    elif sl_ang >= -15:
-        sl_pt = 0
-    elif sl_ang > -45:
-        sl_pt = -10
+    # 3. 幾何動能: SL Angle (45度為江恩1x1基準, 15分) + Momentum Wave (10分)
+    if sl_data:
+        ang = float(sl_data['last_angle'])
+        sl_pt = float(np.clip((ang / 45.0) * 15.0, -15.0, 15.0))
     else:
-        sl_pt = -15
+        sl_pt = 0.0
 
-    mome_score = m_pt + sl_pt
-    mome_desc = f"動能{m_val:+.1f} / 角度{sl_ang:+.1f}°"
-    items.append(('幾何動能', mome_desc, mome_score))
+    if mome_data and len(df_chart) > 0:
+        m_val = float(mome_data['last_val'])
+        mw_pt = float(np.clip(m_val * 4.0, -10.0, 10.0))
+    else:
+        mw_pt = 0.0
+
+    mome_score = float(np.clip(sl_pt + mw_pt, -25.0, 25.0))
+    mome_desc = f"幾何角 {sl_data['last_angle']:+.1f}° / 動能 {mome_data['last_val']:+.2f}" if (sl_data and mome_data) else "未啟用"
+    items.append(('幾何動能', mome_desc, int(round(mome_score))))
     total_score += mome_score
 
-    # 4. 時空週期維度 (Time Cycle & S/R 支撐) - 25分
-    c_status = cycle_data.get('window_status', '') if cycle_data else ''
-    if '谷底回升' in c_status or '尋頂期' in c_status:
-        cycle_pt = 15
-    elif '頂部回落' in c_status or '尋底期' in c_status:
-        cycle_pt = -15
+    # 4. 時空幾何: Time Cycle 速度與相位 (+-15分) + S/R 籌碼密集支撐度 (+-10分)
+    cycle_score = 0.0
+    if cycle_data:
+        curr_phase = float(np.radians(cycle_data.get('current_phase_deg', 0)))
+        pos = np.sin(curr_phase)
+        vel = np.cos(curr_phase)
+        c_score = (-pos * 0.4 + vel * 0.6) * 15.0
+        cycle_pt = float(np.clip(c_score, -15.0, 15.0))
     else:
-        cycle_pt = 0
+        cycle_pt = 0.0
 
-    sr_pt = 0
+    sr_pt = 0.0
     if sr_levels and len(df_chart) > 0:
+        last_c = float(df_chart['Close'].iloc[-1])
         supports = [it for it in sr_levels if it['is_support']]
         resistances = [it for it in sr_levels if not it['is_support']]
-        last_c = df_chart['Close'].iloc[-1]
+
         if supports:
             nearest_s = max(it['val'] for it in supports)
-            buf_pct = (last_c / nearest_s - 1.0) * 100
-            if buf_pct >= 1.0:
-                sr_pt = 10
+            sup_item = next(it for it in supports if it['val'] == nearest_s)
+            buf_pct = (last_c / nearest_s - 1.0) * 100.0
+            bias_weight = float(sup_item.get('bias', 15)) / 35.0
+            if buf_pct >= 0.5:
+                sr_pt = 10.0 * bias_weight
             elif buf_pct < -0.5:
-                sr_pt = -10
-        if resistances and sr_pt == 0:
+                sr_pt = -10.0 * bias_weight
+        elif resistances:
             nearest_r = min(it['val'] for it in resistances)
-            gap_pct = (1.0 - last_c / nearest_r) * 100
+            res_item = next(it for it in resistances if it['val'] == nearest_r)
+            gap_pct = (1.0 - last_c / nearest_r) * 100.0
+            bias_weight = float(res_item.get('bias', 15)) / 35.0
             if gap_pct < 1.0:
-                sr_pt = -5
+                sr_pt = -8.0 * bias_weight
 
-    cycle_score = cycle_pt + sr_pt
-    short_c_status = "谷底回升" if "谷底" in c_status else ("頂部回落" if "頂部" in c_status else "週期運行")
-    sr_status = "守住支撐" if sr_pt >= 0 else "跌破支撐"
-    cycle_desc = f"{short_c_status} / {sr_status}"
-    items.append(('時空幾何', cycle_desc, cycle_score))
+    cycle_score = float(np.clip(cycle_pt + sr_pt, -25.0, 25.0))
+    c_status = cycle_data.get('window_status', '') if cycle_data else ''
+    cycle_desc = f"{c_status} / S-R共振"
+    items.append(('時空幾何', cycle_desc, int(round(cycle_score))))
     total_score += cycle_score
 
-    total_score = max(-100, min(100, total_score))
+    total_score = int(round(np.clip(total_score, -100.0, 100.0)))
 
     # 決策等級判定
     if total_score >= 60:
@@ -427,13 +536,13 @@ def compute_confluence_score(cloud_data, vol_data, mome_data, cycle_data, sl_dat
         bg_col = "rgba(16, 185, 129, 0.20)"
         bd_col = "#10b981"
         txt_col = "#34d399"
-        tactics = "四維多頭全面共鳴：三雲趨勢明確，週期向上共振，具備強波段發動特徵，建議積極作多。"
+        tactics = "四維多頭全面共鳴：三雲趨勢展開，動能幾何向上突破，週期時空共振，建議強勢順勢做多。"
     elif total_score >= 20:
         level = "🟢 偏多共振蓄勢 (逢低佈局)"
         bg_col = "rgba(45, 212, 191, 0.18)"
         bd_col = "#14b8a6"
         txt_col = "#2dd4bf"
-        tactics = "多方微幅佔優：處於回測支撐或週期轉折點，短線動能蓄勢，建議依托 S1 支撐分批低吸。"
+        tactics = "多方微幅佔優：處於回測強支撐或週期轉勢拐點，動能蓄勢完畢，建議依托 S1 支撐分批低吸。"
     elif total_score > -20:
         level = "⚖️ 多空中立平衡 (區間觀望)"
         bg_col = "rgba(100, 116, 139, 0.20)"
@@ -445,7 +554,7 @@ def compute_confluence_score(cloud_data, vol_data, mome_data, cycle_data, sl_dat
         bg_col = "rgba(245, 158, 11, 0.18)"
         bd_col = "#f59e0b"
         txt_col = "#fbbf24"
-        tactics = "空方動能佔優：承壓於阻力位下方或動能轉負，建議嚴守止損線，反彈適度減倉鎖利。"
+        tactics = "空方動能佔優：承壓於強阻力位下方或動能轉負，建議嚴守止損線，反彈適度減倉鎖利。"
     else:
         level = "🔴 強烈空頭共振 (嚴格避險)"
         bg_col = "rgba(239, 68, 68, 0.20)"
@@ -464,15 +573,90 @@ def compute_confluence_score(cloud_data, vol_data, mome_data, cycle_data, sl_dat
     }
 
 
-def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"):
-    if df is None or df.empty:
-        st.warning("⚠️ 查無歷史 K 線數據。")
+def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2800.HK"):
+    # 1. 狀態初始化
+    if 'gann04_symbol' not in st.session_state:
+        st.session_state['gann04_symbol'] = symbol if symbol else '2800.HK'
+
+    active_g04_sym, curr_sym, market_label = resolve_global_symbol_info(st.session_state['gann04_symbol'])
+
+    # 🌟 2. 單行極簡看盤工具列 (輸入框 + 核心標的下拉選單 + 刷新按鈕)
+    col_search, col_select, col_refresh = st.columns([5.2, 3.8, 1.0])
+
+    with col_search:
+        raw_in = st.text_input(
+            "全球標的搜尋 (Gann 04)",
+            value=st.session_state['gann04_symbol'],
+            placeholder="輸入代碼 (例: 0005, 700, NVDA, SPY, 1321.T, 600519)...",
+            label_visibility="collapsed",
+            key=f"g04_txt_input_{st.session_state['gann04_symbol']}"
+        ).strip().upper()
+
+        if raw_in:
+            norm_sym, _, _ = resolve_global_symbol_info(raw_in)
+            if norm_sym != st.session_state['gann04_symbol']:
+                st.session_state['gann04_symbol'] = norm_sym
+                st.rerun()
+
+    with col_select:
+        preset_options = [
+            f"📌 常用核心標的快速選取 ({active_g04_sym})",
+            "🇭🇰 2800.HK (盈富基金)",
+            "🇭🇰 0700.HK (騰訊控股)",
+            "🇭🇰 0005.HK (匯豐控股)",
+            "🇭🇰 3033.HK (恒生科技ETF)",
+            "🇺🇸 SPY (標普500 ETF)",
+            "🇺🇸 QQQ (納指100 ETF)",
+            "🇺🇸 NVDA (輝達)",
+            "🇺🇸 TSLA (特斯拉)",
+            "🇯🇵 1321.T (日經225 ETF)",
+            "🇯🇵 7203.T (豐田汽車)",
+            "🇯🇵 9984.T (軟銀集團)",
+            "🇰🇷 069500.KS (KODEX200 ETF)",
+            "🇰🇷 005930.KS (三星電子)",
+            "🇨🇳 510300.SS (滬深300 ETF)",
+            "🇨🇳 510050.SS (上證50 ETF)",
+            "🇨🇳 600519.SS (貴州茅台)",
+            "🇨🇳 159919.SZ (嘉實300 ETF)",
+            "🇨🇳 000858.SZ (五糧液)",
+            "🇨🇳 300750.SZ (寧德時代)"
+        ]
+        sel_val = st.selectbox(
+            "快捷選擇 (Gann 04)",
+            preset_options,
+            index=0,
+            label_visibility="collapsed",
+            key=f"g04_sel_{st.session_state['gann04_symbol']}"
+        )
+        if sel_val and not sel_val.startswith("📌"):
+            chosen_ticker = sel_val.split()[1]
+            norm_sym, _, _ = resolve_global_symbol_info(chosen_ticker)
+            if norm_sym != st.session_state['gann04_symbol']:
+                st.session_state['gann04_symbol'] = norm_sym
+                st.rerun()
+
+    with col_refresh:
+        if st.button("🔄", key="g04_btn_refresh_now", help="刷新實盤行情", use_container_width=True):
+            st.rerun()
+
+    # 🌟 3. 緊隨其後的收放指南表 (預設收合，約 28px)
+    render_global_guide_expander_g04()
+
+    # 4. 實盤數據動態載入
+    current_g04_sym = st.session_state['gann04_symbol']
+    with st.spinner(f"正在加載 {current_g04_sym} ({market_label}) 實盤數據..."):
+        df_dynamic = fetch_gann04_dynamic_data(current_g04_sym, period="2y", interval="1d")
+
+    if not df_dynamic.empty and len(df_dynamic) >= 15:
+        df_full = df_dynamic.copy()
+    elif df is not None and not df.empty:
+        df_full = df.copy()
+        df_full.index = pd.to_datetime(df_full.index).tz_localize(None)
+    else:
+        st.warning(f"⚠️ 暫時未能取得代碼 '{current_g04_sym}' 的歷史行情數據。")
         return
 
-    df_full = df.copy()
-    df_full.index = pd.to_datetime(df_full.index).tz_localize(None)
-
-    # 1. 視角切換控制
+    # 5. 視角切換控制
     c_scope, _ = st.columns([5.2, 4.8])
     with c_scope:
         view_scope = st.radio(
@@ -502,7 +686,7 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
         st.session_state["gann04_confluence"] = True
         st.session_state["trigger_reset_gann04"] = False
 
-    # 2. 控制面板
+    # 6. 控制面板
     with st.expander("⚙️ Gann 04 策略 Y 控制面板 (三雲趨勢、支阻長線與時空幾何)", expanded=True):
         c1, c2, c3, c4, c5 = st.columns([2.0, 2.2, 2.2, 2.0, 2.0])
         with c1:
@@ -525,7 +709,7 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
                 st.session_state["trigger_reset_gann04"] = True
                 st.rerun()
 
-    # 3. 數據運算
+    # 7. 核心數據運算 (100% 真實量化數據)
     future_span_days = 85
     chart_start_dt = df_chart.index[0]
     chart_end_base = df_chart.index[-1] + pd.Timedelta(days=future_span_days)
@@ -562,9 +746,7 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
     if ext_engine and hasattr(ext_engine, "compute_vpvr_and_poc"):
         vpvr_data = ext_engine.compute_vpvr_and_poc(df_chart)
 
-    # =========================================================================
-    # S/R 支阻階梯「極性動態翻轉運算引擎」(Polarity Principle Engine)
-    # =========================================================================
+    # 8. S/R 支阻階梯「極性動態翻轉運算引擎」(Polarity Principle Engine)
     sr_levels = []
     if sr_data:
         last_c = sr_data['last_close']
@@ -617,7 +799,7 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
                         'dash': 'solid', 'width': 2.8, 'is_support': True, 'bias': bias, 'orig_type': 'S'
                     })
 
-    # 4. 執行四維共振評分引擎運算
+    # 9. 執行四維共振評分引擎運算
     conf_data = compute_confluence_score(
         cloud_data=cloud_data,
         vol_data=vol_data,
@@ -628,9 +810,7 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
         df_chart=df_chart
     ) if show_confluence else None
 
-    # =========================================================================
-    # 5. 頂部深黑戰術橫幅 (極性翻轉徽章 + 四維共振決策卡)
-    # =========================================================================
+    # 10. 頂部深黑戰術橫幅 (極性翻轉徽章 + 四維共振決策卡，自適應貨幣)
     trend_title = cloud_data['trend_status'] if cloud_data else "三雲趨勢監控"
     trend_col = cloud_data['trend_color'] if cloud_data else "#ffffff"
 
@@ -654,7 +834,7 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
             if it['is_support']:
                 pill = (
                     f'<span style="background:rgba(45,212,191,0.15); color:#2dd4bf; border:1px solid #14b8a6; padding:2px 8px; border-radius:4px; font-size:11px;">'
-                    f'<b>{it["display_name"]} {it["val"]:.2f}</b> <span style="font-size:10px; color:#a7f3d0;">({it["status_badge"]})</span> 偏買 {it["bias"]}%'
+                    f'<b>{it["display_name"]} {curr_sym}{it["val"]:.2f}</b> <span style="font-size:10px; color:#a7f3d0;">({it["status_badge"]})</span> 偏買 {it["bias"]}%'
                     f'</span>'
                 )
             else:
@@ -662,7 +842,7 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
                 text_c = "#fb923c" if it.get('orig_type') == 'S' else "#facc15"
                 pill = (
                     f'<span style="background:rgba(234,179,8,0.15); color:{text_c}; border:1px solid {border_c}; padding:2px 8px; border-radius:4px; font-size:11px;">'
-                    f'<b>{it["display_name"]} {it["val"]:.2f}</b> <span style="font-size:10px; color:#fef08a;">({it["status_badge"]})</span> 偏賣 {it["bias"]}%'
+                    f'<b>{it["display_name"]} {curr_sym}{it["val"]:.2f}</b> <span style="font-size:10px; color:#fef08a;">({it["status_badge"]})</span> 偏賣 {it["bias"]}%'
                     f'</span>'
                 )
             pills_list.append(pill)
@@ -697,7 +877,7 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
             f'<div style="color:{conf_data["txt_col"]}; font-size:24px; font-weight:900; font-family:monospace; line-height:1.1;">{conf_data["total_score"]:+d}</div>'
             f'</div>'
             f'<div>'
-            f'<div style="color:{conf_data["txt_col"]}; font-size:14px; font-weight:bold;">{conf_data["level"]}</div>'
+            f'<div style="color:{conf_data["txt_col"]}; font-size:14px; font-weight:bold;">{conf_data["level"]} ({current_g04_sym})</div>'
             f'<div style="color:#cbd5e1; font-size:11px; margin-top:3px; max-width:440px; line-height:1.4;">{conf_data["tactics"]}</div>'
             f'</div>'
             f'</div>'
@@ -726,36 +906,31 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
     )
     st.markdown(banner_html, unsafe_allow_html=True)
 
-    # =========================================================================
-    # 5.1 📖 四維共振計分說明與交易室戰術指引 (可收合拉掣)
-    # =========================================================================
+    # 11. 四維共振計分說明與交易室戰術指引
     with st.expander("📖 點擊展開／收合：四維共振系統 (Confluence Score) 計分說明與交易室戰術指引", expanded=False):
-        expander_md = """
+        st.markdown("""
 #### 📐 關於 4 組分數與最高分設計
 整套四維共振系統的**理論最高滿分是 $+100$ 分**（最低為 $-100$ 分），由 4 個核心維度各自貢獻 **最高 25 分** 組成：
 
-| # | 維度名稱 | 衡量指標與核心依據 | 最高滿分 | 當前得分 | 盤面現況診斷 |
-| :-: | :--- | :--- | :-: | :-: | :--- |
-| **1** | **趨勢雲帶** | Eric's Three Cloud 快中慢三雲排列結構 | **$+25$ 分** | `0 分` | 股價自 234 回檔，三雲處於收斂整理階段 |
-| **2** | **量能爆發** | Volume Plus 爆量倍數（vs MA20）與多空方向 | **$+25$ 分** | `0 分` | 成交量約為 0.9x MA20，屬於健康量縮回踩，未見恐慌拋壓 |
-| **3** | **幾何動能** | Momentum Wave 極性（10分）+ SL Angle 角度（15分） | **$+25$ 分** | `0 分` | 動能柱微正、角度 $-21.7^\circ$（溫和回調），多空正負相抵 |
-| **4** | **時空幾何** | 2R 正弦波轉折（15分）+ S1 支撐防守緩衝（10分） | **$+25$ 分** | **`+25 分 (滿分)`** | **正弦波確認「谷底回升」，且股價穩守 S1 支撐線上方** |
-| **Σ** | **綜合總分** | **四維累加總分（-100 ~ +100）** | **`+100 分`** | **`+25 分`** | **🟢 偏多共振蓄勢 (逢低佈局)** |
+| # | 維度名稱 | 衡量指標與核心依據 | 最高滿分 | 狀態與特徵 |
+| :-: | :--- | :--- | :-: | :--- |
+| **1** | **趨勢雲帶** | Eric's Three Cloud 快中慢三雲厚度與分離率 (歸一化至 ATR) | **$+25$ 分** | 連續梯度反映三雲擴張力度 |
+| **2** | **量能爆發** | Volume Plus 爆量倍數 (vs MA20) 與方向衝量 (Volume Impulse) | **$+25$ 分** | 放量推進給正分，縮量回踩中立 |
+| **3** | **幾何動能** | SL Angle 角度映射 1x1 線 (15分) + Momentum Wave 動能柱 (10分) | **$+25$ 分** | 角度越大速度越快，動能柱確認方向 |
+| **4** | **時空幾何** | 實測波段週期轉折 (15分) + S/R 支阻與真實籌碼沉澱緩衝 (10分) | **$+25$ 分** | 週期底/頂拐點確認，並考量籌碼密集度 |
+| **Σ** | **綜合總分** | **四維累加總分（-100 ~ +100）** | **`+100 分`** | **連續動態平滑更新** |
 
 ---
 
 #### 🎯 總分區間與交易室指令對照
 - **$+60 \sim +100$ 分【🔥 強烈多頭共振】**：四維全線爆發，具備主升段特徵，戰略積極做多；
-- **$+20 \sim +59$ 分【🟢 偏多共振蓄勢】（當前狀態）**：時空維度已拿滿 25 分（跌不動了，時間見底），處於回測 S1 支撐的左側/次低點黃金佈局區；
+- **$+20 \sim +59$ 分【🟢 偏多共振蓄勢】**：時空維度到位，處於回測強支撐的左側/次低點黃金佈局區；
 - **$-19 \sim +19$ 分【⚖️ 多空中立平衡】**：多空信號互抵，觀望等待方向；
 - **$-20 \sim -59$ 分【🟡 偏空承壓回調】**：空方動能佔優，反彈減倉；
 - **$-60 \sim -100$ 分【🔴 強烈空頭共振】**：破位大跌且帶量，嚴禁抄底。
-        """
-        st.markdown(expander_md)
+        """)
 
-    # =========================================================================
-    # 6. Micro-Domain 緊湊副圖架構 (主圖垂直空間釋放至 56.5% 以上)
-    # =========================================================================
+    # 12. Micro-Domain 緊湊副圖架構
     layers = []
     if show_harmonic and harmonic_data:
         layers.append(('harmonic', 0.090))
@@ -824,11 +999,7 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
     fig = go.Figure()
     fig._grid_ref = build_grid_ref(1 + len(layers))
 
-    # ==========================================
-    # --- 圖層 1: K 線主圖 + 三雲 + S/R + Gann Box ---
-    # ==========================================
-
-    # A. ☁️ Eric's Three Cloud
+    # 圖層 1: K 線主圖 + 三雲 + S/R + Gann Box
     if cloud_data:
         dates_arr = df_chart.index
 
@@ -853,7 +1024,6 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
         for t in fast_traces:
             fig.add_trace(t, row=1, col=1)
 
-    # B. 📐 Auto Gann Range (天地分流避讓)
     if gann_box:
         b_st = gann_box['box_start_date']
         b_ed = gann_box['box_end_date']
@@ -906,21 +1076,18 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
                 yaxis=axes_map['price'], showlegend=False, hoverinfo='skip'
             ), row=1, col=1)
 
-    # C. 📈 主圖 K 線
     fig.add_trace(go.Candlestick(
         x=df_chart.index,
         open=df_chart['Open'], high=df_chart['High'], low=df_chart['Low'], close=df_chart['Close'],
-        name=f'{symbol} K線',
+        name=f'{current_g04_sym} K線',
         increasing_line_color='#00e676', decreasing_line_color='#ff5252',
         increasing_fillcolor='#00e676', decreasing_fillcolor='#ff5252',
         yaxis=axes_map['price'], showlegend=False
     ), row=1, col=1)
 
-    # D. ⚖️ 主要支阻長線 (極性翻轉 S-R Flip + 26px 防碰撞鬆弛演算法)
     if sr_levels and show_sr_rays:
         right_boundary_dt = chart_end_final
 
-        # 偵測 Eric's Channel 通道中軸數值 (若有)
         channel_val = None
         if cloud_data:
             channel_val = cloud_data.get('channel_val', cloud_data.get('channel_price', None))
@@ -942,7 +1109,6 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
         label_collision_items = [{'id': it['id'], 'price': it['val']} for it in sr_levels]
         label_collision_items.append({'id': 'close', 'price': sr_data['last_close']})
 
-        # 🌟 將通道中軸真正加入防碰撞項目陣列，與現價及 S/R 標籤同步避讓
         if channel_val is not None:
             label_collision_items.append({'id': 'channel', 'price': float(channel_val)})
 
@@ -964,7 +1130,7 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
                 xref="x domain", yref=axes_map['price'],
                 x=0.998, y=it['val'],
                 yshift=label_shifts.get(it['id'], 0),
-                text=f"<b>{it['display_name']} │ {it['val']:.2f}</b>",
+                text=f"<b>{it['display_name']} │ {curr_sym}{it['val']:.2f}</b>",
                 bgcolor=it['bg'],
                 bordercolor=it['border'],
                 borderwidth=1.5,
@@ -973,7 +1139,6 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
                 showarrow=False, xanchor="right", yanchor="middle"
             )
 
-        # 🟩 即時現價基準線與實心綠膠囊 (接入防碰撞偏移)
         last_c = sr_data['last_close']
         fig.add_shape(
             type="line", xref="paper", yref=axes_map['price'],
@@ -984,13 +1149,12 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
             xref="x domain", yref=axes_map['price'],
             x=0.998, y=last_c,
             yshift=label_shifts.get('close', 0),
-            text=f"<b>{last_c:.2f}</b>",
+            text=f"<b>{curr_sym}{last_c:.2f}</b>",
             bgcolor="#065f46", bordercolor="#00e676", borderwidth=1.5, borderpad=4,
             font=dict(color="#ffffff", size=10.5, family="monospace"),
             showarrow=False, xanchor="right", yanchor="middle"
         )
 
-        # 🟥 若存在 Eric's Channel 數值，渲染專屬通道標籤並應用防碰撞位移
         if channel_val is not None:
             fig.add_shape(
                 type="line", xref="paper", yref=axes_map['price'],
@@ -1001,19 +1165,16 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
                 xref="x domain", yref=axes_map['price'],
                 x=0.998, y=channel_val,
                 yshift=label_shifts.get('channel', 0),
-                text=f"<b>Eric's Channel {channel_val:.2f}</b>",
+                text=f"<b>Eric's Channel {curr_sym}{channel_val:.2f}</b>",
                 bgcolor="#b91c1c", bordercolor="#ef4444", borderwidth=1.5, borderpad=4,
                 font=dict(color="#ffffff", size=10, family="Arial, sans-serif"),
                 showarrow=False, xanchor="right", yanchor="middle"
             )
 
-    # E. 注入主圖右側推算暗區
     if show_harmonic and harmonic_data and harmonic_comp:
         harmonic_comp.inject_future_projection_zone(fig, harmonic_data, yaxis_name=axes_map['price'])
 
-    # ==========================================
-    # --- 圖層 2: 📊 Volume Plus (異常量能柱 & MA20 標籤) ---
-    # ==========================================
+    # 圖層 2: Volume Plus
     if show_vol_plus and vol_data:
         v_yax = axes_map['volume']
         fig.add_trace(go.Bar(
@@ -1046,9 +1207,7 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
             showarrow=False, xanchor="left"
         )
 
-    # ==========================================
-    # --- 圖層 3: 🌊 Momentum Wave (當勢動能波) ---
-    # ==========================================
+    # 圖層 3: Momentum Wave
     if show_mome_wave and mome_data:
         m_yax = axes_map['momentum']
         fig.add_trace(go.Bar(
@@ -1079,9 +1238,7 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
             showarrow=False, xanchor="left"
         )
 
-    # =========================================================================
-    # --- 圖層 4: TIME CYCLE (江恩八度音階同頻諧振 2R 正弦波) ---
-    # =========================================================================
+    # 圖層 4: TIME CYCLE
     if show_cycle and cycle_data:
         c_yax = axes_map['cycle']
 
@@ -1123,14 +1280,14 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
             if vpvr_data.get('is_lvn'):
                 chip_guard_html = "  |  <span style='background:#7f1d1d; color:#fca5a5; border:1px solid #ef4444; padding:1px 6px; border-radius:3px;'><b>⚠️ 籌碼真空加速區：防週期鈍化</b></span>"
             elif vpvr_data.get('near_poc') or vpvr_data.get('is_hvn'):
-                chip_guard_html = f"  |  <span style='background:#14532d; color:#86efac; border:1px solid #22c55e; padding:1px 6px; border-radius:3px;'><b>🛡️ POC籌碼重兵區 (${vpvr_data.get('poc_price', 0):.2f})：時空共振變盤</b></span>"
+                chip_guard_html = f"  |  <span style='background:#14532d; color:#86efac; border:1px solid #22c55e; padding:1px 6px; border-radius:3px;'><b>🛡️ POC籌碼重兵區 ({curr_sym}{vpvr_data.get('poc_price', 0):.2f})：時空共振變盤</b></span>"
             elif vpvr_data.get('is_in_value_area'):
                 chip_guard_html = "  |  <span style='background:#0f3854; color:#7dd3fc; border:1px solid #38bdf8; padding:1px 6px; border-radius:3px;'><b>⚖️ 70%價值區內：平衡震盪週期勝率 >85%</b></span>"
             else:
                 chip_guard_html = "  |  <span style='background:#3b1e54; color:#f0abfc; border:1px solid #c084fc; padding:1px 6px; border-radius:3px;'><b>⚡ 突破價值區：單邊趨勢失衡</b></span>"
 
         hud_cycle = (
-            f"<b>TIME CYCLE 同頻諧振</b> 2R={cycle_data['cycle_bars']}B (基頻 R={cycle_data['r_period']}B)  |  "
+            f"<b>TIME CYCLE 同頻諧振</b> 2R={cycle_data['cycle_bars']}B (實測 R={cycle_data['r_period']}B)  |  "
             f"<span style='background:#78350f; color:#fde68a; padding:1px 5px; border-radius:3px;'><b>{cycle_data['window_status']}</b></span>  |  "
             f"相位 <b>{cycle_data['current_phase_deg']}°</b>  |  "
             f"距轉折 <b>{cycle_data['next_turn_bars']}B</b>"
@@ -1143,9 +1300,7 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
             font=dict(color="#ffffff", size=10, family="monospace"), showarrow=False, xanchor="left"
         )
 
-    # =========================================================================
-    # --- 圖層 5: SL ANGLE (ATR-14 波動率標準化幾何動能線) ---
-    # =========================================================================
+    # 圖層 5: SL ANGLE
     if show_sl_angle and sl_data:
         sl_y = axes_map['sl_angle']
 
@@ -1200,15 +1355,11 @@ def render_page_1gann_gann04_workspace(df: pd.DataFrame, symbol: str = "2330.TW"
             font=dict(color="#ffffff", size=9.5, family="monospace"), showarrow=False, xanchor="left"
         )
 
-    # ==========================================
-    # --- 圖層 6: ⏳ 諧波時間跳躍弧 (Harmonic Arcs) ---
-    # ==========================================
+    # 圖層 6: 諧波時間跳躍弧
     if show_harmonic and harmonic_data and harmonic_comp:
         harmonic_comp.inject_harmonic_arcs_traces(fig, harmonic_data, yaxis_name=axes_map['harmonic'])
 
-    # ===================================================
-    # 7. 整合佈局 (十字線全軸貫通 + 安全邊界)
-    # ===================================================
+    # 13. 整合佈局
     fig.update_layout(
         template='plotly_dark',
         paper_bgcolor='#0a0e14',

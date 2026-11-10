@@ -2,6 +2,7 @@
 Filename: page_1gann_gann02_extreme_calc.py
 Description: 江恩自然極限軌道、VPVR 70% 價值區間 (VAH/VAL) 與真空帶 (LVN) 識別、
              VQC 歷史與未來轉勢日預測、動態天文 24 節氣引擎、時空籌碼多維共振雷達
+             (100% 真實數據與純天文數學解算 · 全球多市場旗艦版)
 """
 
 import math
@@ -271,10 +272,10 @@ def compute_vpvr_and_poc(df: pd.DataFrame, num_bins: int = 40):
     }
 
 # ==============================================================================
-# 🎯 時空籌碼多維共振雷達 (Confluence Score 演算法)
+# 🎯 時空籌碼多維共振雷達 (Confluence Score 演算法，支援動態貨幣符號)
 # ==============================================================================
 
-def compute_confluence_score(last_close: float, ext_data: dict, vpvr_data: dict, cycle_data: dict, solar_terms: list, last_date=None):
+def compute_confluence_score(last_close: float, ext_data: dict, vpvr_data: dict, cycle_data: dict, solar_terms: list, last_date=None, curr_sym: str = "$"):
     score = 0
     checks = []
 
@@ -305,7 +306,7 @@ def compute_confluence_score(last_close: float, ext_data: dict, vpvr_data: dict,
         if vpvr_data.get('near_poc') or vpvr_data.get('is_hvn'):
             c3 = True
             score += 1
-            checks.append(f"POC籌碼密集共振 (${vpvr_data['poc_price']:.2f})")
+            checks.append(f"POC籌碼密集共振 ({curr_sym}{vpvr_data['poc_price']:.2f})")
         elif vpvr_data.get('is_lvn'):
             checks.append("⚠️ 處於籌碼真空區(LVN)")
 

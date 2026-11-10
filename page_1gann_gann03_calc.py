@@ -1,12 +1,13 @@
 """
 Filename: page_1gann_gann03_calc.py
-Description: Gann 03 核心運算模組
+Description: Gann 03 核心運算模組 (100% 純真實量價與回歸通道 · 全球多市場旗艦版)
 升級功能：
-  1. Eric's Channel（小龍量化三線通道：黃色上軌、紅色生命線中軌、綠色下軌）
-  2. Chop Index (市場震盪指數) + 帶寬壓縮狀態機 (DORMANT 休眠震盪防禦)
-  3. ATR 0.3x 緩衝防禦帶 (Buffer Band)，精確過濾假刺穿與假跌破
-  4. ZL-MACD 噪聲死區過濾 (Dead-band Hysteresis)，杜絕零軸微小抖動頻繁翻色
-  5. Eric's Regression (4Y)（四年長週期線性回歸軌道）
+1. Eric's Channel（小龍量化三線通道：黃色上軌、紅色生命線中軌、綠色下軌）
+2. Chop Index (市場震盪指數) + 帶寬壓縮狀態機 (DORMANT 休眠震盪防禦)
+3. ATR 0.3x 緩衝防禦帶 (Buffer Band)，精確過濾盤中假刺穿與假跌破
+4. ZL-MACD 噪聲死區過濾 (Dead-band Hysteresis)，杜絕零軸微小抖動頻繁翻色
+5. Eric's Regression (4Y)（四年長週期線性回歸軌道）
+6. 支援全球貨幣自適應 (HK$, $, ¥, ₩)
 """
 
 import pandas as pd
@@ -29,7 +30,7 @@ def compute_chop_index(df: pd.DataFrame, period: int = 14) -> pd.Series:
     min_lo = low.rolling(period, min_periods=1).min()
 
     diff = (max_hi - min_lo).replace(0, np.nan)
-    ci = 100 * np.log10(sum_tr / diff) / np.log10(period)
+    ci = 100.0 * np.log10(sum_tr / diff) / np.log10(period)
     return ci.bfill().fillna(50.0)
 
 
@@ -38,12 +39,14 @@ def compute_erics_channel(
     period: int = 50,
     atr_period: int = 20,
     atr_mult: float = 2.8,
-    buffer_mult: float = 0.3
+    buffer_mult: float = 0.3,
+    curr_sym: str = "$"
 ):
     """
     計算 Eric's Channel 三線通道，升級：
     1. Chop Index 盤整指數 + 帶寬壓縮狀態機 (DORMANT 休眠震盪防禦)
     2. ATR 緩衝防禦帶 (Buffer Band = 0.3 * ATR)，過濾盤中假刺穿
+    3. 全球貨幣動態適應
     """
     df = df.copy()
     close = df['Close']
@@ -62,12 +65,12 @@ def compute_erics_channel(
     upper = mid + band
     lower = mid - band
 
-    # 🎯 升級 1: 0.3 * ATR 生命線緩衝防禦帶 (過濾假刺穿)
+    # 0.3 * ATR 生命線緩衝防禦帶
     buffer_dist = atr * buffer_mult
     mid_buffer_upper = mid + buffer_dist
     mid_buffer_lower = mid - buffer_dist
 
-    # 🎯 升級 2: Chop Index 震盪指數與帶寬壓縮狀態機
+    # Chop Index 震盪指數與帶寬壓縮狀態機
     chop_idx = compute_chop_index(df, period=14)
     bandwidth = (upper - lower) / (mid.replace(0, np.nan)) * 100.0
     bw_low_quantile = bandwidth.rolling(60, min_periods=10).quantile(0.18).bfill()
@@ -82,7 +85,6 @@ def compute_erics_channel(
     last_bw = float(bandwidth.iloc[-1])
     last_atr = float(atr.iloc[-1])
 
-    # 判定市場狀態 (震盪休眠 vs 趨勢跟隨)
     is_dormant = bool(last_chop >= 60.0 or last_bw <= float(bw_low_quantile.iloc[-1]))
     if is_dormant:
         regime = "DORMANT_CHOP"
@@ -93,7 +95,6 @@ def compute_erics_channel(
         regime_badge = "🚀 單邊趨勢跟蹤模式 (TRENDING)"
         regime_text = "市場處於有效趨勢週期：生命線趨勢防禦全面生效！"
 
-    # 判定生命線防禦狀態 (是否為良性回踩測試 vs 真正破位)
     if last_close >= last_mid:
         defense_status = "BULL_HEALTHY"
         defense_badge = "🟢 生命線上·多頭主導"
@@ -101,11 +102,11 @@ def compute_erics_channel(
     elif last_close >= last_buf_down:
         defense_status = "BENIGN_TEST"
         defense_badge = "🛡️ 生命線良性防守測試中 (未實體破位)"
-        defense_text = f"盤中微幅回踩生命線，守於 0.3×ATR 緩衝帶 (${last_buf_down:.2f}) 之上，視為良性測試"
+        defense_text = f"盤中微幅回踩生命線，守於 0.3×ATR 緩衝帶 ({curr_sym}{last_buf_down:.2f}) 之上，視為良性測試"
     else:
         defense_status = "TRUE_BREAKDOWN"
         defense_badge = "🔴 實體破位跌破生命線"
-        defense_text = f"收盤已明確跌破 0.3×ATR 緩衝帶 (${last_buf_down:.2f})，趨勢轉入防守偏弱期"
+        defense_text = f"收盤已明確跌破 0.3×ATR 緩衝帶 ({curr_sym}{last_buf_down:.2f})，趨勢轉入防守偏弱期"
 
     return {
         'mid': mid,
@@ -130,12 +131,13 @@ def compute_erics_channel(
         'regime_text': regime_text,
         'defense_status': defense_status,
         'defense_badge': defense_badge,
-        'defense_text': defense_text
+        'defense_text': defense_text,
+        'curr_sym': curr_sym
     }
 
 
 def compute_4y_regression(df: pd.DataFrame, lookback_bars: int = 1000):
-    """計算 Eric's Regression (4Y) 四年線性回歸通道"""
+    """計算 Eric's Regression (4Y) 四年線性回歸通道 (修復乘號語法)"""
     n = min(len(df), lookback_bars)
     if n < 10:
         return None
@@ -194,11 +196,11 @@ def compute_zl_macd(
         (C > (LLV(L, 250) * 1.3))
     )
 
-    # 2. ZLEMA 零滯後雙均線運算
+    # 2. ZLEMA 零滯後雙均線運算 (修復乘號語法)
     def _zlema(series, span):
         ema1 = series.ewm(span=span, adjust=False).mean()
         ema2 = ema1.ewm(span=span, adjust=False).mean()
-        return 2 * ema1 - ema2
+        return 2.0 * ema1 - ema2
 
     fast_zl = _zlema(C, fast)
     slow_zl = _zlema(C, slow)
@@ -215,7 +217,7 @@ def compute_zl_macd(
 
     macd_dir = zl_hist >= zl_hist.shift(1).fillna(0)
 
-    # 原始顏色賦值 (使用 NumPy 陣列安全賦值)
+    # 原始顏色賦值
     raw_color = np.full(len(df), '#aaaaaa', dtype=object)
     raw_color = np.where(non_stage2_bull & macd_dir, '#888888', raw_color)
     raw_color = np.where(non_stage2_bull & ~macd_dir, '#aaaaaa', raw_color)
@@ -228,7 +230,7 @@ def compute_zl_macd(
     raw_color = np.where(normal_bear & ~macd_dir, '#00AA00', raw_color)
     raw_color = np.where(normal_bear & macd_dir, '#00FFFF', raw_color)
 
-    # 🎯 升級 3: 噪聲死區遲滯過濾 (Dead-band Hysteresis)
+    # 噪聲死區遲滯過濾 (Dead-band Hysteresis)
     tr1 = H - L
     tr2 = (H - C.shift(1)).abs()
     tr3 = (L - C.shift(1)).abs()
@@ -239,17 +241,15 @@ def compute_zl_macd(
     color_vals = np.copy(raw_color)
     hist_vals = np.asarray(zl_hist)
 
-    # 狀態機遲滯過濾：柱體在微小死區內時，鎖定沿用前一棒色彩
     for i in range(1, len(color_vals)):
         if abs(hist_vals[i]) < db_thresh[i]:
             color_vals[i] = color_vals[i - 1]
 
     macd_color = pd.Series(color_vals, index=df.index)
 
-    # 水上金叉信號 (DIF 向上金叉 DEA 且都在水上)
+    # 水上金叉信號
     cross_gold = (zl_diff > zl_dea) & (zl_diff.shift(1).bfill() <= zl_dea.shift(1).bfill()) & (zl_diff > 0) & (zl_dea > 0)
 
-    # 若指定了可視範圍的索引，精確切片回傳
     if target_index is not None:
         return {
             'diff': zl_diff.loc[target_index],

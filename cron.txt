@@ -1,0 +1,7 @@
+# --- 港美股市市場市寬全自動同步排程 ---
+35 16 * * 1-5 cd /Users/nam/Desktop/asset_tracker && /Library/Developer/CommandLineTools/usr/bin/python3 sync_hk_indices_eod.py --target all >> /Users/nam/Desktop/asset_tracker/sync_hk.log 2>&1
+30 5 * * 2-6 cd /Users/nam/Desktop/asset_tracker && /Library/Developer/CommandLineTools/usr/bin/python3 sync_all_indices_eod.py --target all >> /Users/nam/Desktop/asset_tracker/sync_us.log 2>&1
+
+# --- 港美全景五維市寬高速更新 (Parquet 離線引擎) ---
+30 16 * * 1-5 /Users/nam/Desktop/asset_tracker/venv/bin/python /Users/nam/Desktop/asset_tracker/update_market_breadth.py >> /Users/nam/Desktop/asset_tracker/cron_hk.log 2>&1
+30 5 * * 2-6 /Users/nam/Desktop/asset_tracker/venv/bin/python /Users/nam/Desktop/asset_tracker/update_market_breadth.py >> /Users/nam/Desktop/asset_tracker/cron_us.log 2>&1

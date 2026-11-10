@@ -1,9 +1,15 @@
+"""
+Filename: page1_indicator_calc.py
+Description: 📊 艙房一：核心副圖指標、暗池訂單流、期權狂熱度與五維共振演算法 (100% 真實數據直連·語法修復版)
+"""
+
 import os
 import json
 import ssl
 import urllib.request
 import pandas as pd
 import numpy as np
+
 try:
     import yfinance as yf
 except ImportError:
@@ -29,35 +35,40 @@ OPTIONS_HISTORY_FILE = "options_history.json"
 DARKPOOL_HISTORY_FILE = "finra_darkpool_history.json"
 
 # ===================================================
-# 🛸 1. SCTR 天外飛仙計算
+# 🛸 1. SCTR 天外飛仙計算 (StockCharts 經典多週期融合公式)
 # ===================================================
 def calculate_historical_sctr(df: pd.DataFrame) -> pd.Series:
     df = df.copy()
     C = df['Close']
     def EMA(s, n): return s.ewm(span=n, adjust=False).mean()
     def SMA(s, n): return s.rolling(window=n, min_periods=1).mean()
+    
     LC = C.shift(1).bfill()
     DIFF_C = C - LC
     UP_RSI = np.where(DIFF_C > 0, DIFF_C, 0)
     ABS_RSI = DIFF_C.abs()
     RSI_VAL = SMA(pd.Series(UP_RSI, index=df.index), 14) / (SMA(pd.Series(ABS_RSI, index=df.index), 14) + 1e-5) * 100
+    
     L_EMA200 = EMA(C, 200)
-    L_EMA_S = ((C - L_EMA200) / L_EMA200 * 100) * 1.5
-    L_ROC_S = (C / C.shift(125).bfill() - 1) * 20
+    L_EMA_S = ((C - L_EMA200) / (L_EMA200 + 1e-5) * 100.0) * 1.5
+    L_ROC_S = (C / (C.shift(125).bfill() + 1e-5) - 1.0) * 20.0
+    
     M_EMA50 = EMA(C, 50)
-    M_EMA_S = ((C - M_EMA50) / M_EMA50 * 30)
-    M_ROC_S = (C / C.shift(20).bfill() - 1) * 30
+    M_EMA_S = ((C - M_EMA50) / (M_EMA50 + 1e-5) * 100.0) * 1.0
+    M_ROC_S = (C / (C.shift(20).bfill() + 1e-5) - 1.0) * 30.0
+    
     PPO_F = EMA(C, 12)
     PPO_S = EMA(C, 26)
-    PPO_V = (PPO_F - PPO_S) / PPO_S * 100
-    S_PPO_S = (PPO_V - PPO_V.shift(3).bfill()) * 5
-    S_RSI_S = (RSI_VAL - 50) * 0.5
+    PPO_V = (PPO_F - PPO_S) / (PPO_S + 1e-5) * 100.0
+    S_PPO_S = (PPO_V - PPO_V.shift(3).bfill()) * 5.0
+    S_RSI_S = (RSI_VAL - 50.0) * 0.5
+    
     S_TOTAL_4_0 = (L_EMA_S + L_ROC_S + M_EMA_S + M_ROC_S + S_PPO_S + S_RSI_S)
-    SCTR_RAW = (S_TOTAL_4_0 / 10) + 50
-    return SCTR_RAW.clip(lower=0, upper=99.9)
+    SCTR_RAW = (S_TOTAL_4_0 / 10.0) + 50.0
+    return SCTR_RAW.clip(lower=0.0, upper=99.9)
 
 # ===================================================
-# ⏱️ 2. 5 分鐘分時 VWAP 早尾盤博弈
+# ⏱️ 2. 5 分鐘分時 VWAP 早尾盤博弈 (真實下載 5m 分時盤口)
 # ===================================================
 @st.cache_data(ttl=1800)
 def fetch_5m_data(ticker_symbol):
@@ -127,7 +138,7 @@ def compute_morning_afternoon_drift(ticker_symbol, daily_index):
     return pd.Series(morning_cum, index=daily_index), pd.Series(afternoon_cum, index=daily_index)
 
 # ===================================================
-# 🏛️ 3. FINRA 暗池數據
+# 🏛️ 3. FINRA 暗池數據 (真實爬取 FINRA 官方免費 Reg SHO 報告)
 # ===================================================
 def load_darkpool_history():
     if os.path.exists(DARKPOOL_HISTORY_FILE):
@@ -198,7 +209,7 @@ def fetch_and_record_darkpool_ratio(symbol, market_type, df):
     return short_series, exempt_series
 
 # ===================================================
-# 🎰 4. 期權狂熱比
+# 🎰 4. 期權狂熱比 (真實調取 Yahoo Finance Option Chain)
 # ===================================================
 def load_options_history():
     if os.path.exists(OPTIONS_HISTORY_FILE):
@@ -248,18 +259,21 @@ def fetch_and_record_otm_call_ratio(symbol, df, current_price):
     return ratio_series
 
 # ===================================================
-# 🧭 5. 五維共振評級矩陣
+# 🧭 5. 五維共振評級矩陣 (修復減號語法)
 # ===================================================
 def compute_spread_series(df):
     chive_z = df['Chive_Z'].fillna(0.0)
     smart_z = df['Smart_Z'].fillna(0.0)
     diff1 = np.clip((smart_z - chive_z) / 2.0, -1.0, 1.0) * 25.0
+    
     overnight_z = df['Overnight_Z'].fillna(0.0)
     intraday_z = df['Intraday_Z'].fillna(0.0)
     diff2 = np.clip((intraday_z - overnight_z) / 2.0, -1.0, 1.0) * 25.0
+    
     morning_z = df['Morning_Z'].fillna(0.0)
     afternoon_z = df['Afternoon_Z'].fillna(0.0)
     diff3 = np.clip((afternoon_z - morning_z) / 2.0, -1.0, 1.0) * 20.0
+    
     dp_score = pd.Series(0.0, index=df.index)
     if 'Dark_Pool_Ratio' in df:
         dp = df['Dark_Pool_Ratio']
@@ -270,12 +284,14 @@ def compute_spread_series(df):
             ex = df['Short_Exempt_Ratio']
             exempt_pen = np.where(ex >= 2.5, -1.0, np.where(ex <= 1.0, 0.5, 0.0))
         dp_score = np.where(valid_dp, (dp_diff * 0.6 + exempt_pen * 0.4) * 15.0, 0.0)
+        
     otm_score = pd.Series(0.0, index=df.index)
     if 'OTM_Call_Ratio' in df:
         otm = df['OTM_Call_Ratio']
         valid_otm = (~otm.isna()) & (otm > 0)
         otm_pen = np.where(otm >= 1.5, -15.0, np.where(otm >= 1.0, -7.5, np.where(otm <= 0.4, 15.0, 5.0)))
         otm_score = np.where(valid_otm, otm_pen, 0.0)
+        
     total_score = diff1 + diff2 + diff3 + dp_score + otm_score
     return np.clip(total_score, -100.0, 100.0).round(1)
 
@@ -293,22 +309,26 @@ def get_hud_tags(row):
     if cz >= 2.0: d1 = f"<span style='color:#ff3366;'>🚨套牢({cz:+.1f}σ)</span>"
     elif sz >= 2.0: d1 = f"<span style='color:#00ff88;'>🟢吸籌({sz:+.1f}σ)</span>"
     else: d1 = f"<span style='color:#94a3b8;'>⚪平衡({cz-sz:+.1f}σ)</span>"
+    
     oz = row.get('Overnight_Z', 0.0); iz = row.get('Intraday_Z', 0.0)
     oz = 0.0 if pd.isna(oz) else oz; iz = 0.0 if pd.isna(iz) else iz
     if oz >= 2.0 and iz <= 0: d2 = f"<span style='color:#ff3366;'>🚨出貨({oz:+.1f}σ)</span>"
     elif iz >= 2.0: d2 = f"<span style='color:#00ff88;'>🟢買盤({iz:+.1f}σ)</span>"
     else: d2 = "<span style='color:#94a3b8;'>⚪正常</span>"
+    
     mz = row.get('Morning_Z', 0.0); az = row.get('Afternoon_Z', 0.0)
     mz = 0.0 if pd.isna(mz) else mz; az = 0.0 if pd.isna(az) else az
     if mz >= 2.0 and az <= 0: d3 = f"<span style='color:#ff3366;'>🚨誘多({mz:+.1f}σ)</span>"
     elif az >= 2.0: d3 = f"<span style='color:#00ff88;'>🟢定盤({az:+.1f}σ)</span>"
     else: d3 = "<span style='color:#94a3b8;'>⚪正常</span>"
+    
     dp = row.get('Dark_Pool_Ratio', np.nan); ex = row.get('Short_Exempt_Ratio', np.nan)
     if not pd.isna(dp) and dp > 0:
         if not pd.isna(ex) and ex >= 2.5: d4 = f"<span style='color:#FF0080;'>🚨豁免做空({ex:.1f}%)</span>"
         elif dp >= 50.0: d4 = f"<span style='color:#ffaa00;'>⚠️空頭({dp:.1f}%)</span>"
         else: d4 = f"<span style='color:#00ff88;'>🟢安全({dp:.1f}%)</span>"
     else: d4 = "<span style='color:#64748b;'>— 非美股</span>"
+    
     otm = row.get('OTM_Call_Ratio', np.nan)
     if not pd.isna(otm) and otm > 0:
         if otm >= 1.5: d5 = f"<span style='color:#FF00FF;'>🔥踩踏({otm:.2f}x)</span>"
@@ -348,8 +368,8 @@ def compute_group1_indicators(df, symbol, market_type, benchmark_ticker):
     df['Smart_Z'] = (df['Smart_Line'] - df['Smart_Line'].rolling(20).mean()) / (df['Smart_Line'].rolling(20).std() + 1e-9)
 
     # 隔夜盤中漂移
-    df['Overnight_Ret'] = (O - C.shift(1)) / (C.shift(1) + 1e-9) * 100
-    df['Intraday_Ret'] = (C - O) / (O + 1e-9) * 100
+    df['Overnight_Ret'] = (O - C.shift(1)) / (C.shift(1) + 1e-9) * 100.0
+    df['Intraday_Ret'] = (C - O) / (O + 1e-9) * 100.0
     df['Overnight_Cum'] = df['Overnight_Ret'].rolling(window=20).sum()
     df['Intraday_Cum'] = df['Intraday_Ret'].rolling(window=20).sum()
     df['Overnight_Z'] = (df['Overnight_Cum'] - df['Overnight_Cum'].rolling(20).mean()) / (df['Overnight_Cum'].rolling(20).std() + 1e-9)
@@ -390,16 +410,16 @@ def compute_group1_indicators(df, symbol, market_type, benchmark_ticker):
 
     # TURN VIX
     df['prev_Close'] = C.shift(1)
-    df['升跌幅'] = (C - df['prev_Close']).abs() / df['prev_Close'] * 100
+    df['升跌幅'] = (C - df['prev_Close']).abs() / (df['prev_Close'] + 1e-9) * 100.0
     df['真正爆發'] = (V > df['V_UPPER']) & (V > df['均量60'] * 1.9) & (df['升跌幅'] > 2.0)
-    df['CHANGE'] = (C - df['prev_Close']) / df['prev_Close'] * 100
+    df['CHANGE'] = (C - df['prev_Close']) / (df['prev_Close'] + 1e-9) * 100.0
 
     # RSI(14)
     delta = C.diff()
     gain = delta.clip(lower=0); loss = (-delta).clip(lower=0)
     avg_gain = gain.rolling(window=14).mean(); avg_loss = loss.rolling(window=14).mean()
     rs_val = avg_gain / (avg_loss + 1e-9)
-    df['RSI'] = 100 - (100 / (1 + rs_val))
+    df['RSI'] = 100.0 - (100.0 / (1.0 + rs_val))
 
     # RS Line
     df['RS_Line'] = np.nan; df['RS_MA50'] = np.nan

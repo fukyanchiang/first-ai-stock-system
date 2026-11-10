@@ -1,3 +1,9 @@
+"""
+Filename: page1_indicator02_calc.py
+Description: 📊 艙房一：4 大富途神兵技術指標運算庫 (Stage2 / MACD / TTM / VCP / SPRING)
+             (100% 真實個股盤口計算 · 語法修復版)
+"""
+
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -26,7 +32,8 @@ def compute_group2_indicators(df):
         w2_sum = np.sum(w ** 2)
         if w2_sum == 0: return S
         slope_num = pd.Series(0.0, index=S.index)
-        for i in range(N): slope_num += w[i] * S.shift(N - 1 - i).bfill().fillna(0)
+        for i in range(N):
+            slope_num += w[i] * S.shift(N - 1 - i).bfill().fillna(0)
         return S.rolling(N, min_periods=1).mean() + (slope_num / w2_sum) * (N - 1) / 2.0
 
     # 1. MARK MINERVINI STAGE 2 趨勢過濾
@@ -102,7 +109,10 @@ def compute_group2_indicators(df):
     IS_ULTIMATE = STAGE2 & EX_MEM & (C > HHV(H, 20).shift(1).bfill()) & ((C / C.shift(1).bfill()) > 1.05) & (~BREAKOUT)
     IS_PARABOLIC = (C > MA(C, 20)) & (MA(C, 20) > MA50) & ((C / (LLV(L, 30).shift(5).bfill() + 1e-9)) > 1.5) & (C > HHV(H, 10).shift(1).bfill()) & (C > O) & ((C / C.shift(1).bfill()) > 1.03) & (~BREAKOUT) & (~IS_ULTIMATE) & (~AI_DRAGON)
     MA10 = MA(C, 10)
-    IS_AMBUSH = (MA50 > MA150) & (MA150 > MA200) & (MA200 > MA200.shift(20).fillna(0)) & (((COUNT(MA10 < MA20_C, 3) >= 1) & (MA10 <= MA20_C) & ((MA10 + (MA10 - MA10.shift(1).bfill())) > (MA20_C + (MA20_C - MA20_C.shift(1).bfill()))) & (C > O)) | ((COUNT(MA20_C < MA50, 5) >= 1) & (MA20_C <= MA50) & ((MA20_C + (MA20_C - MA20_C.shift(1).bfill())) > (MA50 + (MA50 - MA50.shift(1).bfill()))) & (C > O)))
+    
+    SHORT_WASH = (COUNT(MA10 < MA20_C, 3) >= 1) & (MA10 <= MA20_C) & ((MA10 + (MA10 - MA10.shift(1).bfill())) > (MA20_C + (MA20_C - MA20_C.shift(1).bfill()))) & (C > O)
+    MID_WASH = (COUNT(MA20_C < MA50, 5) >= 1) & (MA20_C <= MA50) & ((MA20_C + (MA20_C - MA20_C.shift(1).bfill())) > (MA50 + (MA50 - MA50.shift(1).bfill()))) & (C > O)
+    IS_AMBUSH = (MA50 > MA150) & (MA150 > MA200) & (MA200 > MA200.shift(20).fillna(0)) & (SHORT_WASH | MID_WASH)
     
     IS_VCP = BREAKOUT & VCP_READY.shift(1).fillna(False)
     IS_HTF = BREAKOUT & HTF_READY.shift(1).fillna(False)
@@ -180,7 +190,6 @@ def render_group2_traces(fig, k, df_display, y_ax, dm, y_num, y_axes_config):
 
     elif k == "ttm":
         fig.add_trace(go.Bar(x=df_display.index, y=df_display['TTM_VAR2'], marker_color=df_display['TTM_COLOR'], name='TTM 動能', yaxis=y_ax))
-        # 零軸 Squeeze 點點
         fig.add_trace(go.Scatter(x=df_display.index, y=[0]*len(df_display), mode='markers', marker=dict(color='#00ff88', size=4), name='波幅釋放', yaxis=y_ax))
         sqz_dates = df_display[df_display['TTM_SQZ'] == True].index
         if len(sqz_dates) > 0:
@@ -192,11 +201,9 @@ def render_group2_traces(fig, k, df_display, y_ax, dm, y_num, y_axes_config):
         fig.add_trace(go.Scatter(x=df_display.index, y=df_display['NEW_DEA'], mode='lines', line=dict(color='#0CAEE6', width=2), name='DEA', yaxis=y_ax))
         fig.add_trace(go.Bar(x=df_display.index, y=df_display['NEW_MACD'], marker_color=df_display['NEW_MACD_COLOR'], name='MACD 柱體', yaxis=y_ax))
         
-        # 水上金叉向上紅箭嘴
         gold_dates = df_display[df_display['MACD_GOLD'] == True].index
         for d in gold_dates:
             fig.add_trace(go.Scatter(x=[d], y=[df_display.loc[d, 'NEW_DIF'] * 0.95], mode='markers', marker=dict(symbol='triangle-up', color='red', size=8), showlegend=False, yaxis=y_ax))
-        # 頂底背馳符號
         top_div = df_display[df_display['MACD_TOP_DIV'] == True].index
         for d in top_div:
             fig.add_trace(go.Scatter(x=[d], y=[df_display.loc[d, 'NEW_DIF'] * 1.05], mode='markers', marker=dict(symbol='triangle-down', color='#00ff88', size=8), showlegend=False, yaxis=y_ax))

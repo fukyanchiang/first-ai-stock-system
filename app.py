@@ -12,7 +12,16 @@ except Exception:
 if 'symbol' not in st.session_state:
     st.session_state['symbol'] = 'NVDA'
 
-# 🚀【極簡直連咒語】：直接召喚所有分艙
+# =========================================================================
+# 🚀【極簡直連咒語】：模組安全加載中心
+# =========================================================================
+
+# 🎯 載入全新 @01：宏觀天網風暴預警總舵 (安全防護模式)
+try:
+    from _01_page_market_monitor import render_page_market_monitor
+except ImportError:
+    render_page_market_monitor = None
+
 from page1 import render_stock_tab
 
 # 🎯 載入全新獨立江恩太極艙房 (安全防護模式)
@@ -22,14 +31,48 @@ except ImportError:
     page1gann = None
 
 import page_1a  
+
+# 🎯 載入全新 1a-02：AGI 五層全維量化狙擊旗艦機 (安全防護模式)
+try:
+    from page_1a02 import render_page_1a02
+except ImportError:
+    render_page_1a02 = None
+
 from page2 import render_options_tab
 from page_2a import render_breadth_tab          
 from page_2b import render_master_tower_tab     
+
+# 🎯 載入全新 2b_新：全景市底大師指揮塔 (7大指數 x 五維全光譜市寬)
+try:
+    from page_2b_master_matrix import render_page_2b_master_matrix
+except ImportError:
+    render_page_2b_master_matrix = None
+
 from page_2c import render_sentiment_macro_tab   
 from page_2bb import render_page_2bb  
 from page_2bb_hk import render_page_2bb_hk  
 from page_2e import render_page_2e  
+
+# 🎯 載入全新 2e_新：美股全量真實市寬 (3500+隻全景陣列) —— 完好保留原版
+try:
+    from page_2e_new import render_page_2e_new
+except ImportError:
+    render_page_2e_new = None
+
+# 🎯 載入全新 2e_七層：美股七層全維光譜矩陣透睇市場法 (安全防護模式)
+try:
+    from page_2e_7layer import render_page_2e_7layer
+except ImportError:
+    render_page_2e_7layer = None
+
 from page_2e_hk import render_page_2e_hk  
+
+# 🎯 載入全新 2e-HK_新：港股全量真實市寬 (全景陣列)
+try:
+    from page_2e_hk_new import render_page_2e_hk_new
+except ImportError:
+    render_page_2e_hk_new = None
+
 from page_2f import render_page_2f  
 from page_2g import render_page_2g  
 from page_2g_2 import render_page_2g_2  # 🎯 聯儲局議息監控
@@ -60,6 +103,12 @@ from page3 import render_macro_tab
 from page4 import render_page4  
 from pages_5 import render_page5  
 from page_ai_prompt import render_prompt_generator  
+
+# 🎯 載入全新 🤖 艙房七：量化市寬多策略回測沙盤 (安全防護模式)
+try:
+    from page7 import render_page7
+except ImportError:
+    render_page7 = None
 
 # 💡 爺爺「萬能相容執行器」：自動掃描並執行 2q-2u 模組內的任何渲染函數！
 def run_fed_module(module):
@@ -142,19 +191,25 @@ st.markdown("<h1>🌐 大指揮官・全球資產與期權量化終端</h1>", un
 # =========================================================================
 st.sidebar.markdown("## 🧭 戰略艙房導航中心")
 
-# 🎯 集中定義導航選項字典
+# 🎯 集中定義導航選項字典 (首頁設置在 @01 宏觀天網)
 NAV_OPTIONS = {
+    "P01": "📊 艙房@01：🌐 宏觀天網：風暴綜合預警總舵",  # 👈 【首頁 First Page】擺在最頂端第一位！
     "P1": "📊 艙房一：六維王者矩陣 (股票)",
     "P1_GANN": "📊 艙房一_江恩：太極時空幾何",  # ⭐ 緊隨艙房一正下方
     "P1A": "🛸 艙房 1a：天外飛仙 (RS 強勢爆發)",
+    "P1A02": "⚡ 艙房 1a-02：AGI 五層量化狙擊",  # ⭐ 緊隨艙房 1a 正下方獨立旗艦
     "P2": "🔥 艙房二：期權多維雷達 (Options)",
     "P2A": "📊 艙房 2a：全球市場市寬大面板",
     "P2B": "🛡️ 艙房 2b：環球市底大師指揮塔",
+    "P2B_NEW": "🛡️ 艙房 2b_新：全景市底大師指揮塔",  # ⭐ 緊隨艙房 2b 正下方 (7大指數 x 五維全光譜市寬)
     "P2C": "🦅 艙房 2c：宏觀恐懼與美債雷達",
     "P2BB": "📡 艙房 2bb：個股版塊拔河熱力圖 (美股)",
     "P2BB_HK": "🇭🇰 艙房 2bb-HK：個股版塊拔河熱力圖 (港股)",
     "P2E": "🧩 艙房 2e：美股原版真實市寬",
+    "P2E_NEW": "🧩 艙房 2e_新：美股全量真實市寬 (3500+隻)",  # ⭐ 完好保留原版 2e_新
+    "P2E_7L": "🧩 艙房 2e_七層：美股七層全維光譜矩陣透睇市場法",  # 🎯 新增七層阿爾法透視艙房
     "P2E_HK": "🧩 艙房 2e-HK：港股原版真實市寬",
+    "P2E_HK_NEW": "🇭🇰 艙房 2e-HK_新：港股全量真實市寬 (全景陣列)",  # ⭐ 緊隨艙房 2e-HK 正下方
     "P2F": "🧩 艙房 2f：債市恐慌 MOVE 終極拆解",
     "P2G": "🧩 艙房 2g：FRED (BofA 高收益債利差) + HYG",
     "P2G_2": "🏦 艙房 2g-2：聯儲局議息監控 (FedWatch)", 
@@ -181,7 +236,8 @@ NAV_OPTIONS = {
     "P3": "🌊 艙房三：全球宏觀資金流 (Liquidity)",
     "P4": "🔴 艙房四：機構堡壘情報局 (Bloomberg/RSS)",
     "P5": "🔴 艙房五：機構大鱷持倉與資金流 (13F/EPFR)",
-    "P6": "🤖 艙房六：AI 馴服與絕對軍令中心"
+    "P6": "🤖 艙房六：AI 馴服與絕對軍令中心",
+    "P7": "🤖 艙房七：量化回測沙盤 (Backtest)"
 }
 
 page_choice = st.sidebar.radio("請點擊切換進入艙房：", list(NAV_OPTIONS.values()))
@@ -218,13 +274,19 @@ if symbol:
         if df.empty:
             st.error("❌ 找不到該資產的數據，請檢查代號格式是否正確！")
         else:
-            if page_choice == NAV_OPTIONS["P1"]:
+            # 🎯 優先分流：@01 宏觀天網風暴預警總舵 (首頁)
+            if page_choice == NAV_OPTIONS["P01"]:
+                if render_page_market_monitor is not None:
+                    render_page_market_monitor()
+                else:
+                    st.error("⚠️ 模組 `_01_page_market_monitor.py` 載入失敗或尚未建立，請確認已放置於專案根目錄。")
+
+            elif page_choice == NAV_OPTIONS["P1"]:
                 render_stock_tab(df, period, market_type, symbol)
 
             elif page_choice == NAV_OPTIONS["P1_GANN"]:
                 # 🎯 執行全新艙房一_江恩：太極時空幾何
                 if page1gann is not None:
-                    # 自動相容各種常見渲染入口名稱
                     if hasattr(page1gann, "render_gann_taichi_tab"):
                         page1gann.render_gann_taichi_tab(df, period, market_type, symbol)
                     elif hasattr(page1gann, "render_page"):
@@ -241,6 +303,13 @@ if symbol:
                     page_1a.render_page_1a()
                 else:
                     st.error("⚠️ 模組 page_1a 載入失敗或遺失。")
+
+            elif page_choice == NAV_OPTIONS["P1A02"]:
+                # 🎯 執行全新 1a-02：AGI 五層全維量化狙擊旗艦機
+                if render_page_1a02 is not None:
+                    render_page_1a02()
+                else:
+                    st.error("⚠️ 模組 `page_1a02.py` 載入失敗或尚未建立，請確認已放置於專案根目錄。")
                 
             elif page_choice == NAV_OPTIONS["P2"]:
                 df_clean_for_opt = df.dropna(subset=['Close']).copy()
@@ -251,6 +320,13 @@ if symbol:
                 
             elif page_choice == NAV_OPTIONS["P2B"]:
                 render_master_tower_tab()
+
+            elif page_choice == NAV_OPTIONS["P2B_NEW"]:
+                # 🎯 執行全新 2b_新：全景市底大師指揮塔 (7大指數 x 五維全光譜市寬)
+                if render_page_2b_master_matrix is not None:
+                    render_page_2b_master_matrix()
+                else:
+                    st.error("⚠️ 模組 `page_2b_master_matrix.py` 載入失敗或尚未建立，請確認已放置於專案根目錄。")
                 
             elif page_choice == NAV_OPTIONS["P2C"]:
                 render_sentiment_macro_tab()
@@ -264,8 +340,29 @@ if symbol:
             elif page_choice == NAV_OPTIONS["P2E"]:  
                 render_page_2e()
 
+            elif page_choice == NAV_OPTIONS["P2E_NEW"]:
+                # 🎯 執行原版 2e_新：美股全量真實市寬 (3500+隻全景陣列)
+                if render_page_2e_new is not None:
+                    render_page_2e_new()
+                else:
+                    st.error("⚠️ 模組 `page_2e_new.py` 載入失敗或尚未建立，請確認已放置於專案根目錄。")
+
+            elif page_choice == NAV_OPTIONS["P2E_7L"]:
+                # 🎯 執行全新 2e_七層：美股七層全維光譜矩陣透睇市場法
+                if render_page_2e_7layer is not None:
+                    render_page_2e_7layer()
+                else:
+                    st.error("⚠️ 模組 `page_2e_7layer.py` 載入失敗或尚未建立，請確認已放置於專案根目錄。")
+
             elif page_choice == NAV_OPTIONS["P2E_HK"]:  
                 render_page_2e_hk()
+
+            elif page_choice == NAV_OPTIONS["P2E_HK_NEW"]:
+                # 🎯 執行全新 2e-HK_新：港股全量真實市寬 (全景陣列)
+                if render_page_2e_hk_new is not None:
+                    render_page_2e_hk_new()
+                else:
+                    st.error("⚠️ 模組 `page_2e_hk_new.py` 載入失敗或尚未建立，請確認已放置於專案根目錄。")
                 
             elif page_choice == NAV_OPTIONS["P2F"]:
                 render_page_2f()
@@ -350,6 +447,13 @@ if symbol:
                 
             elif page_choice == NAV_OPTIONS["P6"]:
                 render_prompt_generator()
+
+            elif page_choice == NAV_OPTIONS["P7"]:
+                # 🎯 執行全新 🤖 艙房七：量化回測沙盤
+                if render_page7 is not None:
+                    render_page7()
+                else:
+                    st.error("⚠️ 模組 `page7.py` 載入失敗或尚未建立，請確認已放置於專案根目錄。")
                 
     except Exception as e: 
         st.error(f"⚠️ 系統抓取數據時發生錯誤: {str(e)}")
@@ -376,4 +480,4 @@ try:
     else:
         st.info("🔄 OpenBB 細分行業資料庫正在後台建立索引中...")
 except Exception as e:
-    st.info("🔄 OpenBB 細分行業資料庫正在後台建立索引中...")# reload cloud Sat Oct 24 00:07:21 HKT 2026
+    st.info("🔄 OpenBB 細分行業資料庫正在後台建立索引中...")

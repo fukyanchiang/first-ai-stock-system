@@ -1,0 +1,457 @@
+{
+  "XLK": {
+    "early_drop": {
+      "title_wins": "8 / 9 次",
+      "prob_5pct": "88%",
+      "base_5pct": "49%",
+      "prob_10pct": "44%",
+      "base_10pct": "27%",
+      "sub_prob": "44%",
+      "sub_count": "9 次，跌 ≥5%",
+      "false_main": "1 / 9 次",
+      "false_sub": "5 / 9 次"
+    },
+    "bottom": {
+      "title_wins": "25 / 31 次",
+      "ret_60d": "+3.9%",
+      "base_60d": "+3.7%",
+      "ret_1y": "+17.0%",
+      "base_1y": "+17.1%",
+      "sub_ret": "+3.2%",
+      "sub_count": "36 次，60 日後",
+      "false_main": "6 / 31 次",
+      "false_sub": "12 / 36 次"
+    },
+    "rally": {
+      "title_wins": "29 / 32 次",
+      "ret_120d": "+6.2%",
+      "base_120d": "+7.6%",
+      "ret_1y": "+16.6%",
+      "base_1y": "+17.1%",
+      "sub_ret": "+6.3%",
+      "sub_count": "51 次，120 日後",
+      "false_main": "3 / 32 次",
+      "false_sub": "12 / 51 次"
+    }
+  },
+  "SMH": {
+    "early_drop": {
+      "title_wins": "11 / 16 次",
+      "prob_5pct": "68%",
+      "base_5pct": "59%",
+      "prob_10pct": "50%",
+      "base_10pct": "38%",
+      "sub_prob": "52%",
+      "sub_count": "21 次，跌 ≥5%",
+      "false_main": "5 / 16 次",
+      "false_sub": "10 / 21 次"
+    },
+    "bottom": {
+      "title_wins": "34 / 34 次",
+      "ret_60d": "+8.2%",
+      "base_60d": "+3.2%",
+      "ret_1y": "+28.5%",
+      "base_1y": "+12.8%",
+      "sub_ret": "+6.4%",
+      "sub_count": "15 次，60 日後",
+      "false_main": "0 / 34 次",
+      "false_sub": "3 / 15 次"
+    },
+    "rally": {
+      "title_wins": "24 / 25 次",
+      "ret_120d": "+14.6%",
+      "base_120d": "+6.5%",
+      "ret_1y": "+31.2%",
+      "base_1y": "+12.8%",
+      "sub_ret": "+9.1%",
+      "sub_count": "12 次，120 日後",
+      "false_main": "1 / 25 次",
+      "false_sub": "2 / 12 次"
+    }
+  },
+  "VRT": {
+    "early_drop": {
+      "title_wins": "4 / 5 次",
+      "prob_5pct": "80%",
+      "base_5pct": "62%",
+      "prob_10pct": "0%",
+      "base_10pct": "39%",
+      "sub_prob": "57%",
+      "sub_count": "7 次，跌 ≥5%",
+      "false_main": "1 / 5 次",
+      "false_sub": "3 / 7 次"
+    },
+    "bottom": {
+      "title_wins": "29 / 29 次",
+      "ret_60d": "+12.4%",
+      "base_60d": "+4.1%",
+      "ret_1y": "+38.6%",
+      "base_1y": "+15.2%",
+      "sub_ret": "+8.5%",
+      "sub_count": "8 次，60 日後",
+      "false_main": "0 / 29 次",
+      "false_sub": "1 / 8 次"
+    },
+    "rally": {
+      "title_wins": "18 / 19 次",
+      "ret_120d": "+18.2%",
+      "base_120d": "+8.5%",
+      "ret_1y": "+42.1%",
+      "base_1y": "+15.2%",
+      "sub_ret": "+11.3%",
+      "sub_count": "6 次，120 日後",
+      "false_main": "1 / 19 次",
+      "false_sub": "1 / 6 次"
+    }
+  },
+  "XLF": {
+    "early_drop": {
+      "title_wins": "3 / 6 次",
+      "prob_5pct": "50%",
+      "base_5pct": "50%",
+      "prob_10pct": "16%",
+      "base_10pct": "28%",
+      "sub_prob": "45%",
+      "sub_count": "31 次，跌 ≥5%",
+      "false_main": "3 / 6 次",
+      "false_sub": "17 / 31 次"
+    },
+    "bottom": {
+      "title_wins": "19 / 30 次",
+      "ret_60d": "+1.7%",
+      "base_60d": "+2.1%",
+      "ret_1y": "+7.1%",
+      "base_1y": "+9.2%",
+      "sub_ret": "+3.2%",
+      "sub_count": "33 次，60 日後",
+      "false_main": "11 / 30 次",
+      "false_sub": "11 / 33 次"
+    },
+    "rally": {
+      "title_wins": "12 / 19 次",
+      "ret_120d": "+2.8%",
+      "base_120d": "+4.3%",
+      "ret_1y": "+8.0%",
+      "base_1y": "+9.2%",
+      "sub_ret": "+3.8%",
+      "sub_count": "26 次，120 日後",
+      "false_main": "7 / 19 次",
+      "false_sub": "6 / 26 次"
+    }
+  },
+  "XLV": {
+    "early_drop": {
+      "title_wins": "5 / 12 次",
+      "prob_5pct": "41%",
+      "base_5pct": "43%",
+      "prob_10pct": "25%",
+      "base_10pct": "19%",
+      "sub_prob": "40%",
+      "sub_count": "25 次，跌 ≥5%",
+      "false_main": "7 / 12 次",
+      "false_sub": "15 / 25 次"
+    },
+    "bottom": {
+      "title_wins": "15 / 17 次",
+      "ret_60d": "+3.0%",
+      "base_60d": "+2.4%",
+      "ret_1y": "+12.9%",
+      "base_1y": "+10.7%",
+      "sub_ret": "+1.3%",
+      "sub_count": "15 次，60 日後",
+      "false_main": "2 / 17 次",
+      "false_sub": "5 / 15 次"
+    },
+    "rally": {
+      "title_wins": "15 / 20 次",
+      "ret_120d": "+2.8%",
+      "base_120d": "+4.8%",
+      "ret_1y": "+9.4%",
+      "base_1y": "+10.7%",
+      "sub_ret": "+3.6%",
+      "sub_count": "30 次，120 日後",
+      "false_main": "5 / 20 次",
+      "false_sub": "7 / 30 次"
+    }
+  },
+  "XLE": {
+    "early_drop": {
+      "title_wins": "1 / 5 次",
+      "prob_5pct": "20%",
+      "base_5pct": "61%",
+      "prob_10pct": "0%",
+      "base_10pct": "41%",
+      "sub_prob": "62%",
+      "sub_count": "27 次，跌 ≥5%",
+      "false_main": "4 / 5 次",
+      "false_sub": "10 / 27 次"
+    },
+    "bottom": {
+      "title_wins": "31 / 44 次",
+      "ret_60d": "+3.6%",
+      "base_60d": "+2.8%",
+      "ret_1y": "+17.1%",
+      "base_1y": "+12.2%",
+      "sub_ret": "+5.1%",
+      "sub_count": "45 次，60 日後",
+      "false_main": "13 / 44 次",
+      "false_sub": "15 / 45 次"
+    },
+    "rally": {
+      "title_wins": "15 / 23 次",
+      "ret_120d": "+5.2%",
+      "base_120d": "+5.6%",
+      "ret_1y": "+9.9%",
+      "base_1y": "+12.2%",
+      "sub_ret": "+2.2%",
+      "sub_count": "32 次，120 日後",
+      "false_main": "8 / 23 次",
+      "false_sub": "8 / 32 次"
+    }
+  },
+  "XLY": {
+    "early_drop": {
+      "title_wins": "4 / 5 次",
+      "prob_5pct": "80%",
+      "base_5pct": "52%",
+      "prob_10pct": "40%",
+      "base_10pct": "27%",
+      "sub_prob": "45%",
+      "sub_count": "37 次，跌 ≥5%",
+      "false_main": "1 / 5 次",
+      "false_sub": "20 / 37 次"
+    },
+    "bottom": {
+      "title_wins": "19 / 24 次",
+      "ret_60d": "+2.6%",
+      "base_60d": "+3.0%",
+      "ret_1y": "+12.6%",
+      "base_1y": "+12.7%",
+      "sub_ret": "-0.1%",
+      "sub_count": "25 次，60 日後",
+      "false_main": "5 / 24 次",
+      "false_sub": "8 / 25 次"
+    },
+    "rally": {
+      "title_wins": "24 / 30 次",
+      "ret_120d": "+5.1%",
+      "base_120d": "+6.0%",
+      "ret_1y": "+12.6%",
+      "base_1y": "+12.7%",
+      "sub_ret": "+3.7%",
+      "sub_count": "44 次，120 日後",
+      "false_main": "6 / 30 次",
+      "false_sub": "11 / 44 次"
+    }
+  },
+  "XLP": {
+    "early_drop": {
+      "title_wins": "2 / 9 次",
+      "prob_5pct": "22%",
+      "base_5pct": "31%",
+      "prob_10pct": "11%",
+      "base_10pct": "10%",
+      "sub_prob": "32%",
+      "sub_count": "28 次，跌 ≥5%",
+      "false_main": "7 / 9 次",
+      "false_sub": "19 / 28 次"
+    },
+    "bottom": {
+      "title_wins": "6 / 6 次",
+      "ret_60d": "+6.4%",
+      "base_60d": "+2.1%",
+      "ret_1y": "+22.1%",
+      "base_1y": "+9.4%",
+      "sub_ret": "+4.3%",
+      "sub_count": "4 次，60 日後",
+      "false_main": "0 / 6 次",
+      "false_sub": "1 / 4 次"
+    },
+    "rally": {
+      "title_wins": "8 / 8 次",
+      "ret_120d": "+0.5%",
+      "base_120d": "+4.4%",
+      "ret_1y": "+8.2%",
+      "base_1y": "+9.4%",
+      "sub_ret": "+2.7%",
+      "sub_count": "8 次，120 日後",
+      "false_main": "0 / 8 次",
+      "false_sub": "2 / 8 次"
+    }
+  },
+  "XLI": {
+    "early_drop": {
+      "title_wins": "4 / 9 次",
+      "prob_5pct": "44%",
+      "base_5pct": "43%",
+      "prob_10pct": "44%",
+      "base_10pct": "25%",
+      "sub_prob": "40%",
+      "sub_count": "37 次，跌 ≥5%",
+      "false_main": "5 / 9 次",
+      "false_sub": "22 / 37 次"
+    },
+    "bottom": {
+      "title_wins": "20 / 25 次",
+      "ret_60d": "+3.7%",
+      "base_60d": "+2.9%",
+      "ret_1y": "+13.1%",
+      "base_1y": "+12.4%",
+      "sub_ret": "+5.4%",
+      "sub_count": "22 次，60 日後",
+      "false_main": "5 / 25 次",
+      "false_sub": "7 / 22 次"
+    },
+    "rally": {
+      "title_wins": "18 / 24 次",
+      "ret_120d": "+6.0%",
+      "base_120d": "+5.8%",
+      "ret_1y": "+9.2%",
+      "base_1y": "+12.4%",
+      "sub_ret": "+7.5%",
+      "sub_count": "28 次，120 日後",
+      "false_main": "6 / 24 次",
+      "false_sub": "7 / 28 次"
+    }
+  },
+  "XLU": {
+    "early_drop": {
+      "title_wins": "3 / 8 次",
+      "prob_5pct": "37%",
+      "base_5pct": "40%",
+      "prob_10pct": "25%",
+      "base_10pct": "16%",
+      "sub_prob": "14%",
+      "sub_count": "14 次，跌 ≥5%",
+      "false_main": "5 / 8 次",
+      "false_sub": "12 / 14 次"
+    },
+    "bottom": {
+      "title_wins": "8 / 14 次",
+      "ret_60d": "+0.3%",
+      "base_60d": "+2.5%",
+      "ret_1y": "+5.6%",
+      "base_1y": "+10.5%",
+      "sub_ret": "+1.9%",
+      "sub_count": "13 次，60 日後",
+      "false_main": "6 / 14 次",
+      "false_sub": "4 / 13 次"
+    },
+    "rally": {
+      "title_wins": "4 / 7 次",
+      "ret_120d": "+4.2%",
+      "base_120d": "+5.1%",
+      "ret_1y": "+2.7%",
+      "base_1y": "+10.5%",
+      "sub_ret": "+4.9%",
+      "sub_count": "10 次，120 日後",
+      "false_main": "3 / 7 次",
+      "false_sub": "2 / 10 次"
+    }
+  },
+  "XLB": {
+    "early_drop": {
+      "title_wins": "5 / 6 次",
+      "prob_5pct": "83%",
+      "base_5pct": "55%",
+      "prob_10pct": "33%",
+      "base_10pct": "29%",
+      "sub_prob": "41%",
+      "sub_count": "29 次，跌 ≥5%",
+      "false_main": "1 / 6 次",
+      "false_sub": "17 / 29 次"
+    },
+    "bottom": {
+      "title_wins": "26 / 33 次",
+      "ret_60d": "+3.7%",
+      "base_60d": "+2.4%",
+      "ret_1y": "+14.0%",
+      "base_1y": "+10.2%",
+      "sub_ret": "+3.7%",
+      "sub_count": "32 次，60 日後",
+      "false_main": "7 / 33 次",
+      "false_sub": "11 / 32 次"
+    },
+    "rally": {
+      "title_wins": "19 / 26 次",
+      "ret_120d": "+2.4%",
+      "base_120d": "+5.0%",
+      "ret_1y": "+5.2%",
+      "base_1y": "+10.2%",
+      "sub_ret": "+3.0%",
+      "sub_count": "38 次，120 日後",
+      "false_main": "7 / 26 次",
+      "false_sub": "9 / 38 次"
+    }
+  },
+  "XLRE": {
+    "early_drop": {
+      "title_wins": "6 / 9 次",
+      "prob_5pct": "66%",
+      "base_5pct": "48%",
+      "prob_10pct": "44%",
+      "base_10pct": "24%",
+      "sub_prob": "40%",
+      "sub_count": "27 次，跌 ≥5%",
+      "false_main": "3 / 9 次",
+      "false_sub": "16 / 27 次"
+    },
+    "bottom": {
+      "title_wins": "16 / 24 次",
+      "ret_60d": "+5.8%",
+      "base_60d": "+3.5%",
+      "ret_1y": "+12.8%",
+      "base_1y": "+14.8%",
+      "sub_ret": "+3.3%",
+      "sub_count": "27 次，60 日後",
+      "false_main": "8 / 24 次",
+      "false_sub": "9 / 27 次"
+    },
+    "rally": {
+      "title_wins": "12 / 16 次",
+      "ret_120d": "+4.6%",
+      "base_120d": "+7.0%",
+      "ret_1y": "+13.6%",
+      "base_1y": "+14.8%",
+      "sub_ret": "+6.7%",
+      "sub_count": "20 次，120 日後",
+      "false_main": "4 / 16 次",
+      "false_sub": "5 / 20 次"
+    }
+  },
+  "XLC": {
+    "early_drop": {
+      "title_wins": "4 / 7 次",
+      "prob_5pct": "57%",
+      "base_5pct": "43%",
+      "prob_10pct": "42%",
+      "base_10pct": "24%",
+      "sub_prob": "37%",
+      "sub_count": "29 次，跌 ≥5%",
+      "false_main": "3 / 7 次",
+      "false_sub": "18 / 29 次"
+    },
+    "bottom": {
+      "title_wins": "16 / 21 次",
+      "ret_60d": "+1.9%",
+      "base_60d": "+4.5%",
+      "ret_1y": "+16.8%",
+      "base_1y": "+20.0%",
+      "sub_ret": "+5.5%",
+      "sub_count": "24 次，60 日後",
+      "false_main": "5 / 21 次",
+      "false_sub": "8 / 24 次"
+    },
+    "rally": {
+      "title_wins": "22 / 26 次",
+      "ret_120d": "+10.0%",
+      "base_120d": "+9.1%",
+      "ret_1y": "+21.3%",
+      "base_1y": "+20.0%",
+      "sub_ret": "+10.7%",
+      "sub_count": "38 次，120 日後",
+      "false_main": "4 / 26 次",
+      "false_sub": "9 / 38 次"
+    }
+  }
+}

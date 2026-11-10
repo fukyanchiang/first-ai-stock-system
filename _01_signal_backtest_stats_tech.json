@@ -1,0 +1,35 @@
+{
+    "early_drop": {
+        "title_wins": "16 / 22 次",
+        "prob_5pct": "72%",
+        "prob_10pct": "45%",
+        "sub_prob": "42%",
+        "sub_count": "7 次，跌 ≥5%",
+        "false_main": "6 / 22 次",
+        "false_sub": "4 / 7 次",
+        "base_5pct": "42%",
+        "base_10pct": "26%"
+    },
+    "bottom": {
+        "title_wins": "15 / 16 次",
+        "ret_60d": "+10.5%",
+        "ret_1y": "+29.3%",
+        "sub_ret": "+9.9%",
+        "sub_count": "17 次，60 日後",
+        "false_main": "1 / 16 次",
+        "false_sub": "2 / 17 次",
+        "base_60d": "+3.8%",
+        "base_1y": "+17.1%"
+    },
+    "rally": {
+        "title_wins": "26 / 29 次",
+        "ret_120d": "+5.8%",
+        "ret_1y": "+15.7%",
+        "sub_ret": "+5.5%",
+        "sub_count": "52 次，120 日後",
+        "false_main": "10 / 30 次",
+        "false_sub": "12 / 52 次",
+        "base_120d": "+7.7%",
+        "base_1y": "+17.1%"
+    }
+}

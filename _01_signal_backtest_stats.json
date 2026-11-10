@@ -1,0 +1,38 @@
+{
+  "_generated_at": "2026-11-03 02:16:41",
+  "period": "2004-2026",
+  "total_days_evaluated": 5745,
+  "early_drop": {
+    "title_wins": "8 / 8 次",
+    "prob_5pct": "100%",
+    "base_5pct": "48%",
+    "prob_10pct": "38%",
+    "base_10pct": "19%",
+    "sub_prob": "53%",
+    "sub_count": "15 次，跌 ≥5%",
+    "false_main": "0 / 8 次",
+    "false_sub": "7 / 15 次"
+  },
+  "bottom": {
+    "title_wins": "12 / 12 次",
+    "ret_60d": "+14.7%",
+    "base_60d": "+2.4%",
+    "ret_1y": "+37.6%",
+    "base_1y": "+6.4%",
+    "sub_ret": "+8.5%",
+    "sub_count": "9 次，60 日後",
+    "false_main": "0 / 12 次",
+    "false_sub": "1 / 9 次"
+  },
+  "rally": {
+    "title_wins": "24 / 25 次",
+    "ret_120d": "+9.4%",
+    "base_120d": "+4.4%",
+    "ret_1y": "+17.9%",
+    "base_1y": "+9.3%",
+    "sub_ret": "+2.2%",
+    "sub_count": "11 次，120 日後",
+    "false_main": "1 / 25 次",
+    "false_sub": "3 / 11 次"
+  }
+}

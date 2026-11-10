@@ -1,11 +1,11 @@
 """
 Filename: page_1gann.py
-Description: 📊 艙房一_江恩：工作台主調度入口 (五分頁旗艦架構)
-分頁 1 (Gann 01)：太極時空幾何、Auto Fibonacci、側欄體檢、諧波形態雷達與時空諧波跳躍弧
-分頁 2 (Gann 02)：江恩自然極限 4 軌、VPVR 籌碼、POC、Time Cycle、SL Angle 與成交量
-分頁 3 (Gann 03)：小龍量化四線通道 (Eric's Channel)、4Y 回歸通道、ZL-MACD、成交量與時空跳躍弧
-分頁 4 (Gann 04)：小龍江恩策略 Y (Eric's Three Cloud、Volume Pressure S/R、Momentum Wave、Auto Gann Range)
-分頁 5 (Gann 05)：宏觀板塊ETF 資金流與五年極值回歸 (34大板塊價量壓力、Top 5 買賣力道、5Y 線性回歸通道與波段訊號)
+Description: 📊 艙房一_江恩：工作台主調度入口 (八分頁旗艦架構 · 全球六大多空市場旗艦版)
+- 頂部 8 大艙房分拆為兩行 (4 × 2 儀表板排版)，徹底解決標籤過長橫向溢出問題
+- 單行極簡看盤工具列 (左輸入框 + 右核心標的快速選單 + 刷新按鈕)
+- 內建一鍵收放的「全球六大市場代碼輸入指南說明表」(預設收合，不佔垂直空間)
+- 純數字智能容錯 (打 5/700 自動轉 0005.HK/0700.HK，打 600519 自動轉 600519.SS)
+- 全局安全初始化 df_raw，確保 Gann 01 ~ Gann 08 全線穩定
 """
 
 import streamlit as st
@@ -16,12 +16,16 @@ import plotly.graph_objects as go
 from plotly.subplots import SubplotRef
 import importlib
 
-# 強制重載底層模組
+# 兼容導入 Gann 01 運算模組
 try:
-    import page1gann_gann01_fan_calc as gann_engine
+    import page_1gann_gann01_fan_calc as gann_engine
     importlib.reload(gann_engine)
 except ImportError:
-    gann_engine = None
+    try:
+        import page1gann_gann01_fan_calc as gann_engine
+        importlib.reload(gann_engine)
+    except ImportError:
+        gann_engine = None
 
 try:
     import page1gann_pattern_calc as pattern_engine
@@ -59,14 +63,12 @@ try:
 except ImportError:
     gann03_engine = None
 
-# 🌟 引入 Gann 04 (策略 Y) 專屬模組
 try:
     import page_1gann_gann04_main as gann04_engine
     importlib.reload(gann04_engine)
 except ImportError:
     gann04_engine = None
 
-# 🌐 引入 Gann 05 (宏觀板塊 ETF 資金流與 5Y 回歸) 專屬模組
 try:
     import page_1gann_gann05_main as gann05_engine
     importlib.reload(gann05_engine)
@@ -74,10 +76,204 @@ except ImportError:
     gann05_engine = None
 
 try:
+    import page_1gann_gann06_main as gann06_engine
+    importlib.reload(gann06_engine)
+except ImportError:
+    gann06_engine = None
+
+try:
+    import page_1gann_gann07_main as gann07_engine
+    importlib.reload(gann07_engine)
+except ImportError:
+    gann07_engine = None
+
+try:
+    import page_1gann_gann08_main as gann08_engine
+    importlib.reload(gann08_engine)
+except ImportError:
+    gann08_engine = None
+
+try:
     import component_gann_harmonic_arcs as harmonic_comp
     importlib.reload(harmonic_comp)
 except ImportError:
     harmonic_comp = None
+
+# =========================================================================
+# 🌐 全球跨市場資產解析器 (含純數字智能自動補全)
+# =========================================================================
+def resolve_global_symbol_info(symbol: str):
+    sym = str(symbol).strip().upper()
+    if not sym:
+        sym = "2800.HK"
+
+    # 1. 純數字智能容錯
+    if sym.isdigit():
+        if len(sym) <= 5:
+            padded = sym.zfill(4 if len(sym) <= 4 else 5)
+            return f"{padded}.HK", "HK$", "港股 / 港股 ETF"
+        elif len(sym) == 6:
+            if sym.startswith(('60', '68', '51', '58')):
+                return f"{sym}.SS", "¥", "中國 A 股 (上證) / ETF"
+            elif sym.startswith(('00', '30', '15', '16')):
+                return f"{sym}.SZ", "¥", "中國 A 股 (深證) / ETF"
+            else:
+                return f"{sym}.SS", "¥", "中國 A 股"
+
+    # 2. 帶後綴或英文代碼處理
+    if sym.endswith(".HK"):
+        code_part = sym[:-3]
+        if code_part.isdigit() and len(code_part) < 4:
+            code_part = code_part.zfill(4)
+        return f"{code_part}.HK", "HK$", "港股 / 港股 ETF"
+    elif sym.endswith(".T"):
+        return sym, "¥", "日股 / 日股 ETF"
+    elif sym.endswith(".KS"):
+        return sym, "₩", "韓股 KOSPI / 韓股 ETF"
+    elif sym.endswith(".KQ"):
+        return sym, "₩", "韓股 KOSDAQ"
+    elif sym.endswith(".SS"):
+        return sym, "¥", "中國 A 股 (上證) / ETF"
+    elif sym.endswith(".SZ"):
+        return sym, "¥", "中國 A 股 (深證) / ETF"
+    else:
+        return sym, "$", "美股 / 美股 ETF / 全球資產"
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def fetch_gann01_dynamic_data(ticker_symbol: str, period: str = "2y", interval: str = "1d"):
+    try:
+        clean_symbol, _, _ = resolve_global_symbol_info(ticker_symbol)
+        t = yf.Ticker(clean_symbol)
+        df = t.history(period=period, interval=interval)
+        if df.empty or len(df) < 15:
+            df_fallback = t.history(period="1y", interval="1d")
+            if not df_fallback.empty:
+                df = df_fallback
+        if hasattr(df.index, 'tz') and df.index.tz is not None:
+            df.index = df.index.tz_localize(None)
+        return df.dropna(subset=['Close'])
+    except Exception:
+        return pd.DataFrame()
+
+
+def inject_gann_workspace_white_controls_css():
+    st.markdown("""
+    <style>
+        /* 導航中心深黑字 */
+        div[data-testid="stRadio"]:not(div[data-baseweb="tab-panel"] div[data-testid="stRadio"]) label,
+        div[data-testid="stRadio"]:not(div[data-baseweb="tab-panel"] div[data-testid="stRadio"]) label *,
+        div[data-testid="stRadio"]:not(div[data-baseweb="tab-panel"] div[data-testid="stRadio"]) p,
+        div[role="radiogroup"]:not(div[data-baseweb="tab-panel"] div[role="radiogroup"]) label,
+        div[role="radiogroup"]:not(div[data-baseweb="tab-panel"] div[role="radiogroup"]) label * {
+            color: #1e293b !important;
+            font-size: 13.5px !important;
+            font-weight: 600 !important;
+            opacity: 1 !important;
+        }
+
+        div.stMarkdown:not(div[data-baseweb="tab-panel"] div.stMarkdown) p,
+        div.stMarkdown:not(div[data-baseweb="tab-panel"] div.stMarkdown) span {
+            color: #1e293b !important;
+        }
+
+        /* =========================================================================
+           🌟 頂部 8 大 Gann 分頁標籤：強制分為 2 行 × 4 列排列
+           ========================================================================= */
+        div[data-baseweb="tab-list"] {
+            background-color: transparent !important;
+            gap: 6px !important;
+            flex-wrap: wrap !important;
+            display: flex !important;
+            padding: 4px 0 10px 0 !important;
+        }
+        div[data-baseweb="tab-list"] button[data-baseweb="tab"] {
+            background-color: #131722 !important;
+            border: 1px solid #2a2e39 !important;
+            border-radius: 6px !important;
+            padding: 7px 10px !important;
+            flex: 1 1 calc(25% - 8px) !important;
+            min-width: 170px !important;
+            justify-content: center !important;
+            margin-bottom: 2px !important;
+            transition: all 0.15s ease !important;
+        }
+        div[data-baseweb="tab-list"] button[data-baseweb="tab"] * {
+            color: #cbd5e1 !important;
+            font-size: 12.5px !important;
+            font-weight: 600 !important;
+            opacity: 0.95 !important;
+        }
+        div[data-baseweb="tab-list"] button[data-baseweb="tab"]:hover {
+            border-color: #38bdf8 !important;
+            background-color: #1e293b !important;
+        }
+        div[data-baseweb="tab-list"] button[data-baseweb="tab"]:hover * {
+            color: #38bdf8 !important;
+        }
+        div[data-baseweb="tab-list"] button[data-baseweb="tab"][aria-selected="true"] {
+            background-color: rgba(255, 77, 109, 0.16) !important;
+            border: 1px solid #ff4d6d !important;
+        }
+        div[data-baseweb="tab-list"] button[data-baseweb="tab"][aria-selected="true"] * {
+            color: #ff4d6d !important;
+            font-weight: 700 !important;
+        }
+        div[data-baseweb="tab-highlight"] {
+            display: none !important;
+        }
+
+        /* 艙房內部面板文字純白 */
+        div[data-baseweb="tab-panel"] div[data-testid="stRadio"] label,
+        div[data-baseweb="tab-panel"] div[data-testid="stRadio"] label *,
+        div[data-baseweb="tab-panel"] div[data-testid="stRadio"] p,
+        div[data-baseweb="tab-panel"] div[role="radiogroup"] label * {
+            color: #ffffff !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            opacity: 1 !important;
+        }
+
+        div[data-baseweb="tab-panel"] div[data-testid="stCheckbox"] label,
+        div[data-baseweb="tab-panel"] div[data-testid="stCheckbox"] label *,
+        div[data-baseweb="tab-panel"] div[data-testid="stCheckbox"] p {
+            color: #ffffff !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            opacity: 1 !important;
+        }
+
+        div[data-baseweb="tab-panel"] div[data-testid="stExpander"] {
+            background-color: #131722 !important;
+            border: 1px solid #2a2e39 !important;
+            border-radius: 6px !important;
+        }
+        div[data-baseweb="tab-panel"] div[data-testid="stExpander"] summary {
+            background-color: #161a25 !important;
+            color: #ffffff !important;
+            border-radius: 6px !important;
+        }
+        div[data-baseweb="tab-panel"] div[data-testid="stExpander"] summary * {
+            color: #ffffff !important;
+            font-size: 12.5px !important;
+            font-weight: 600 !important;
+        }
+        div[data-baseweb="tab-panel"] div[data-testid="stExpander"] div[data-testid="stExpanderDetails"] {
+            background-color: #0c1017 !important;
+        }
+
+        div[data-baseweb="tab-panel"] div[data-testid="stButton"] button,
+        div[data-baseweb="tab-panel"] div[data-testid="stButton"] button * {
+            color: #ffffff !important;
+            font-weight: 600 !important;
+        }
+        div[data-baseweb="tab-panel"] div[data-testid="stSlider"] label,
+        div[data-baseweb="tab-panel"] div[data-testid="stSlider"] label * {
+            color: #ffffff !important;
+            font-weight: 600 !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
 
 def build_grid_ref(num_rows):
@@ -93,48 +289,170 @@ def build_grid_ref(num_rows):
     return grid
 
 
+def render_global_guide_expander():
+    """
+    📘 可收放的全球六大市場代碼輸入指南 (預設收起，不佔螢幕空間)
+    """
+    with st.expander("📖 全球跨市場股票與 ETF 代碼輸入指南 (點擊展開 / 收起)", expanded=False):
+        st.markdown("""
+| 市場分類 | 支援標的類別 | 快捷輸入法 (直接鍵入) | 系統標準代碼 | 代表性股票 / ETF 範例 | 計價幣別 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **🇭🇰 港股** | 藍籌 / 科技股 | `5`、`700`、`9988` | `0005.HK`、`0700.HK` | 匯豐控股、騰訊控股、阿里巴巴 | **HK$** |
+| **🇭🇰 港股 ETF** | 恒指 / 科指 ETF | `2800`、`3033`、`3119` | `2800.HK`、`3033.HK` | 盈富基金、南方恒科、華夏納指 | **HK$** |
+| **🇺🇸 美股** | 科技巨頭 / 權重股 | `NVDA`、`TSLA`、`AAPL` | `NVDA`、`TSLA` | 輝達、特斯拉、蘋果 | **$** |
+| **🇺🇸 美股 ETF** | 大盤 / 行業指數 | `SPY`、`QQQ`、`SOXX` | `SPY`、`QQQ` | 標普500、納指100、半導體ETF | **$** |
+| **🇯🇵 日股** | 跨國巨頭 | `7203.T`、`9984.T` | `7203.T`、`9984.T` | 豐田汽車、軟銀集團 | **¥ (JPY)** |
+| **🇯🇵 日股 ETF** | 日經225 / 東證ETF | `1321.T`、`1306.T` | `1321.T`、`1306.T` | 野村日經225、TOPIX 東證ETF | **¥ (JPY)** |
+| **🇰🇷 韓股** | 韓國綜合 (KOSPI) | `005930.KS`、`000660.KS` | `005930.KS` | 三星電子、SK 海力士 | **₩ (KRW)** |
+| **🇰🇷 韓股 ETF** | 韓國 200 指數 ETF | `069500.KS` | `069500.KS` | KODEX 200 韓股大盤 ETF | **₩ (KRW)** |
+| **🇨🇳 滬 A 股** | 上證主板 / 科創板 | `600519`、`601398` | `600519.SS` | 貴州茅台、工商銀行 | **¥ (RMB)** |
+| **🇨🇳 滬市 ETF** | 滬深300 / 上證50 | `510300`、`510050` | `510300.SS` | 華泰滬深300、華夏上證50 | **¥ (RMB)** |
+| **🇨🇳 深 A 股** | 深證主板 / 創業板 | `000858`、`300750` | `000858.SZ` | 五糧液、寧德時代 | **¥ (RMB)** |
+| **🇨🇳 深市 ETF** | 創業板 / 滬深300 | `159915`、`159919` | `159915.SZ` | 易方達創業板、嘉實300 | **¥ (RMB)** |
+
+> 💡 **智能免後綴小提示**：
+> 1. 輸入 **1～5 位純數字**，系統自動補零並轉為港股 `.HK`（如輸入 `5` 自動轉為 `0005.HK`）。
+> 2. 輸入 **6 位純數字**（`60/68/51` 開頭），自動補為滬市 `.SS`；（`00/30/15` 開頭），自動補為深市 `.SZ`。
+> 3. 輸入 **純英文字母**（如 `NVDA`、`SPY`），自動按美股標準查詢。
+> 4. 日股請在數字後加 **`.T`**，韓股請加 **`.KS`**。
+        """, unsafe_allow_html=True)
+
+
 def render_gann_taichi_tab(df: pd.DataFrame, period: str = "1y", market_type: str = "美股", symbol: str = "NVDA"):
-    if df is None or df.empty:
-        st.warning("⚠️ 查無此資產歷史 K 線數據，請檢查輸入代號。")
-        return
+    inject_gann_workspace_white_controls_css()
 
-    df_raw = df.copy()
-    df_raw.index = pd.to_datetime(df_raw.index).tz_localize(None)
+    # 頂層全域安全初始化 df_raw (防護 Gann 02~08 不崩潰)
+    if df is not None and not df.empty:
+        df_raw = df.copy()
+        if hasattr(df_raw.index, 'tz') and df_raw.index.tz is not None:
+            df_raw.index = df_raw.index.tz_localize(None)
+        else:
+            df_raw.index = pd.to_datetime(df_raw.index)
+    else:
+        try:
+            df_raw = yf.Ticker(symbol if symbol else "NVDA").history(period="1y", interval="1d")
+            if hasattr(df_raw.index, 'tz') and df_raw.index.tz is not None:
+                df_raw.index = df_raw.index.tz_localize(None)
+        except Exception:
+            df_raw = pd.DataFrame()
 
-    # 🎯 頂部 5 大旗艦分頁 (正式加入 Gann 05)
-    tab_gann01, tab_gann02, tab_gann03, tab_gann04, tab_gann05 = st.tabs([
-        "🌌 太極時空幾何與諧波預測 (Gann 01)",
-        "📊 江恩自然極限與動能通道 (Gann 02)",
-        "📈 小龍量化通道與結構流 (Gann 03)",
-        "🎯 小龍江恩策略 Y (Gann 04)",
-        "🌐 宏觀板塊ETF 資金流與五年極值回歸 (Gann 05)"
+    if 'gann01_symbol' not in st.session_state:
+        st.session_state['gann01_symbol'] = symbol if symbol else '2800.HK'
+
+    # 頂部 8 大旗艦分頁 (配合 CSS 自動排成 2 行 × 4 列)
+    tab_gann01, tab_gann02, tab_gann03, tab_gann04, tab_gann05, tab_gann06, tab_gann07, tab_gann08 = st.tabs([
+        "🌌 太極時空幾何 (Gann 01)",
+        "📊 自然極限動能 (Gann 02)",
+        "📈 量化通道結構 (Gann 03)",
+        "🎯 江恩策略 Y (Gann 04)",
+        "🌐 宏觀板塊資金 (Gann 05)",
+        "📐 L1–L7 延伸訊號 (Gann 06)",
+        "🪐 曲線趨勢籌碼 (Gann 07)",
+        "🌊 自然極端極值 (Gann 08)"
     ])
 
     # ==========================================
     # 分頁 1 (Gann 01)
     # ==========================================
     with tab_gann01:
+        active_g01_sym, curr_sym, market_label = resolve_global_symbol_info(st.session_state['gann01_symbol'])
+
+        # 🌟 1. 單行極簡看盤工具列
+        col_search, col_select, col_refresh = st.columns([5.2, 3.8, 1.0])
+
+        with col_search:
+            raw_in = st.text_input(
+                "全球標的搜尋",
+                value=st.session_state['gann01_symbol'],
+                placeholder="輸入代碼 (例: 0005, 700, NVDA, SPY, 1321.T, 600519)...",
+                label_visibility="collapsed",
+                key=f"g01_txt_input_{st.session_state['gann01_symbol']}"
+            ).strip().upper()
+
+            if raw_in:
+                norm_sym, _, _ = resolve_global_symbol_info(raw_in)
+                if norm_sym != st.session_state['gann01_symbol']:
+                    st.session_state['gann01_symbol'] = norm_sym
+                    st.rerun()
+
+        with col_select:
+            preset_options = [
+                f"📌 常用核心標的快速選取 ({active_g01_sym})",
+                "🇭🇰 2800.HK (盈富基金)",
+                "🇭🇰 0700.HK (騰訊控股)",
+                "🇭🇰 0005.HK (匯豐控股)",
+                "🇭🇰 3033.HK (恒生科技ETF)",
+                "🇺🇸 SPY (標普500 ETF)",
+                "🇺🇸 QQQ (納指100 ETF)",
+                "🇺🇸 NVDA (輝達)",
+                "🇺🇸 TSLA (特斯拉)",
+                "🇯🇵 1321.T (日經225 ETF)",
+                "🇯🇵 7203.T (豐田汽車)",
+                "🇯🇵 9984.T (軟銀集團)",
+                "🇰🇷 069500.KS (KODEX200 ETF)",
+                "🇰🇷 005930.KS (三星電子)",
+                "🇨🇳 510300.SS (滬深300 ETF)",
+                "🇨🇳 510050.SS (上證50 ETF)",
+                "🇨🇳 600519.SS (貴州茅台)",
+                "🇨🇳 159919.SZ (嘉實300 ETF)",
+                "🇨🇳 000858.SZ (五糧液)",
+                "🇨🇳 300750.SZ (寧德時代)"
+            ]
+            sel_val = st.selectbox(
+                "快捷選擇",
+                preset_options,
+                index=0,
+                label_visibility="collapsed",
+                key=f"g01_sel_{st.session_state['gann01_symbol']}"
+            )
+            if sel_val and not sel_val.startswith("📌"):
+                chosen_ticker = sel_val.split()[1]
+                norm_sym, _, _ = resolve_global_symbol_info(chosen_ticker)
+                if norm_sym != st.session_state['gann01_symbol']:
+                    st.session_state['gann01_symbol'] = norm_sym
+                    st.rerun()
+
+        with col_refresh:
+            if st.button("🔄", key="g01_btn_refresh_now", help="刷新實盤行情", use_container_width=True):
+                st.rerun()
+
+        # 🌟 2. 緊隨其後的一鍵收放指南表 (預設收起，不佔高度)
+        render_global_guide_expander()
+
+        # 加載實盤數據
+        current_g01_sym = st.session_state['gann01_symbol']
+        with st.spinner(f"正在加載 {current_g01_sym} ({market_label}) 實盤行情數據..."):
+            df_g01_data = fetch_gann01_dynamic_data(current_g01_sym, period="3y", interval="1d")
+
+        if df_g01_data.empty or len(df_g01_data) < 15:
+            df_g01_data = df_raw.copy()
+
+        if df_g01_data.empty:
+            st.warning(f"⚠️ 暫時未能取得代碼 '{current_g01_sym}' 的歷史行情數據，請確認代碼是否正確。")
+            return
+
         c_tf, c_scope, _ = st.columns([1.8, 3.2, 5.0])
         with c_tf:
             timeframe = st.radio("K線級別", ["📅 日線", "📆 週線"], index=0, horizontal=True, label_visibility="collapsed", key="gann01_tf")
         with c_scope:
             view_scope = st.radio("顯示範圍", ["⚡ 近 3 個月 (特寫放大)", "📊 近 6 個月", "🌐 1 年全景"], index=1, horizontal=True, label_visibility="collapsed", key="gann01_scope")
 
+        # 週線切換邏輯
         if "週線" in timeframe:
             try:
-                ticker = yf.Ticker(symbol)
-                df_w = ticker.history(period="2y", interval="1wk")
+                clean_sym, _, _ = resolve_global_symbol_info(current_g01_sym)
+                df_w = yf.Ticker(clean_sym).history(period="3y", interval="1wk")
                 if df_w is not None and not df_w.empty and len(df_w) >= 15:
                     df_active = df_w.copy()
                     df_active.index = pd.to_datetime(df_active.index).tz_localize(None)
                 else:
                     raise ValueError("週線不足")
             except Exception:
-                df_active = df_raw.resample('W-FRI').agg({
+                df_active = df_g01_data.resample('W-FRI').agg({
                     'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'
                 }).dropna()
         else:
-            df_active = df_raw.copy()
+            df_active = df_g01_data.copy()
 
         is_weekly = "週線" in timeframe
         if "3 個月" in view_scope:
@@ -209,7 +527,8 @@ def render_gann_taichi_tab(df: pd.DataFrame, period: str = "1y", market_type: st
                     df=df_chart, extend_bars=extend_bars, show_fan=show_gann_fan,
                     show_mirror=show_mirror, show_channels=show_channels,
                     show_fibo=show_fibo, show_fibo_ext=show_fibo_ext,
-                    anchor_mode=anchor_mode, manual_a_date=manual_a, manual_b_date=manual_b
+                    anchor_mode=anchor_mode, manual_a_date=manual_a, manual_b_date=manual_b,
+                    curr_sym=curr_sym
                 )
             except Exception as e:
                 st.error(f"太極運算錯誤: {e}")
@@ -311,7 +630,7 @@ def render_gann_taichi_tab(df: pd.DataFrame, period: str = "1y", market_type: st
             x=df_chart.index,
             open=df_chart['Open'], high=df_chart['High'],
             low=df_chart['Low'], close=df_chart['Close'],
-            name=f'{symbol} K線',
+            name=f'{current_g01_sym} K線',
             increasing_line_color='#00e676', decreasing_line_color='#ff5252',
             increasing_fillcolor='#00e676', decreasing_fillcolor='#ff5252',
             yaxis=axes_map['price'], showlegend=False
@@ -359,7 +678,7 @@ def render_gann_taichi_tab(df: pd.DataFrame, period: str = "1y", market_type: st
                 if vpvr_data.get('is_lvn'):
                     chip_guard_html = "  |  <span style='background:#7f1d1d; color:#fca5a5; border:1px solid #ef4444; padding:1px 6px; border-radius:3px;'><b>⚠️ 籌碼真空加速區：防週期鈍化</b></span>"
                 elif vpvr_data.get('near_poc') or vpvr_data.get('is_hvn'):
-                    chip_guard_html = f"  |  <span style='background:#14532d; color:#86efac; border:1px solid #22c55e; padding:1px 6px; border-radius:3px;'><b>🛡️ POC籌碼重兵區 (\${vpvr_data.get('poc_price', 0):.2f})：時空共振變盤</b></span>"
+                    chip_guard_html = f"  |  <span style='background:#14532d; color:#86efac; border:1px solid #22c55e; padding:1px 6px; border-radius:3px;'><b>🛡️ POC籌碼重兵區 ({curr_sym}{vpvr_data.get('poc_price', 0):.2f})：時空共振變盤</b></span>"
                 elif vpvr_data.get('is_in_value_area'):
                     chip_guard_html = "  |  <span style='background:#0f3854; color:#7dd3fc; border:1px solid #38bdf8; padding:1px 6px; border-radius:3px;'><b>⚖️ 70%價值區內：平衡震盪週期勝率 >85%</b></span>"
                 else:
@@ -412,7 +731,7 @@ def render_gann_taichi_tab(df: pd.DataFrame, period: str = "1y", market_type: st
         if diag_engine is not None and hasattr(diag_engine, "calculate_alpha_diagnostics"):
             try:
                 diag_data = diag_engine.calculate_alpha_diagnostics(
-                    df_stock=df_raw, symbol=symbol, market_type=market_type
+                    df_stock=df_g01_data, symbol=current_g01_sym, market_type=market_label
                 )
                 st.markdown("<div style='margin-top:16px;'></div>", unsafe_allow_html=True)
                 with st.expander("📊 大市跑贏度與資產多維體檢 (Alpha Diagnostics)", expanded=True):
@@ -447,7 +766,7 @@ def render_gann_taichi_tab(df: pd.DataFrame, period: str = "1y", market_type: st
         if gann04_engine is not None and hasattr(gann04_engine, "render_page_1gann_gann04_workspace"):
             gann04_engine.render_page_1gann_gann04_workspace(df_raw, symbol=symbol)
         else:
-            st.error("⚠️ 未能載入 `page_1gann_gann04_main.py` 模組。請確認該檔案已建立在專案目錄中。")
+            st.error("⚠️ 未能載入 `page_1gann_gann04_main.py` 模組。")
 
     # ==========================================
     # 🌐 分頁 5：宏觀板塊ETF 資金流與五年極值回歸 (Gann 05)
@@ -456,4 +775,31 @@ def render_gann_taichi_tab(df: pd.DataFrame, period: str = "1y", market_type: st
         if gann05_engine is not None and hasattr(gann05_engine, "render_page_gann05"):
             gann05_engine.render_page_gann05()
         else:
-            st.error("⚠️ 未能載入 `page_1gann_gann05_main.py` 模組。請確認該檔案已建立在專案目錄中。")
+            st.error("⚠️ 未能載入 `page_1gann_gann05_main.py` 模組。")
+
+    # ==========================================
+    # 📐 分頁 6：L1–L7 多層結構延伸與精簡訊號 (Gann 06)
+    # ==========================================
+    with tab_gann06:
+        if gann06_engine is not None and hasattr(gann06_engine, "render_page_gann06"):
+            gann06_engine.render_page_gann06()
+        else:
+            st.error("⚠️ 未能載入 `page_1gann_gann06_main.py` 模組。")
+
+    # ==========================================
+    # 🪐 分頁 7：江恩二階曲線趨勢與雙重籌碼 (Gann 07)
+    # ==========================================
+    with tab_gann07:
+        if gann07_engine is not None and hasattr(gann07_engine, "render_page_gann07"):
+            gann07_engine.render_page_gann07()
+        else:
+            st.error("⚠️ 未能載入 `page_1gann_gann07_main.py` 模組。")
+
+    # ==========================================
+    # 🌊 分頁 8：江恩自然極端通道與極值雲 (Gann 08)
+    # ==========================================
+    with tab_gann08:
+        if gann08_engine is not None and hasattr(gann08_engine, "render_page_gann08"):
+            gann08_engine.render_page_gann08()
+        else:
+            st.error("⚠️ 未能載入 `page_1gann_gann08_main.py` 模組。")
